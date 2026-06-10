@@ -3,42 +3,178 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Ultimate Magic Arena</title>
 
 <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<h1>Ultimate Magic Arena</h1>
+<!-- ロード画面 -->
+<section id="loadingScreen" class="screen active">
 
-<div id="enemy">
-<h2>Enemy</h2>
-<div>HP: <span id="enemyHP">100</span></div>
-<div>Position: <span id="enemyPos">?</span></div>
-</div>
+    <h1>Ultimate Magic Arena</h1>
 
-<hr>
+    <p>Loading Magic Systems...</p>
 
-<div id="battlefield">
+</section>
 
-<button onclick="selectLane('left')">左</button>
-<button onclick="selectLane('center')">中央</button>
-<button onclick="selectLane('right')">右</button>
+<!-- タイトル画面 -->
+<section id="titleScreen" class="screen">
 
-</div>
+    <h1>Ultimate Magic Arena</h1>
 
-<hr>
+    <button id="startBtn">START</button>
+    <button id="helpBtn">HELP</button>
+    <button id="settingsBtn">SETTINGS</button>
 
-<div id="player">
+</section>
 
-<h2>Player</h2>
+<!-- ホーム画面 -->
+<section id="homeScreen" class="screen">
 
-<div>HP: <span id="playerHP">100</span></div>
-<div>MP: <span id="playerMP">30</span></div>
-<div>Position: <span id="playerPos">中央</span></div>
+    <h2>HOME</h2>
 
-<button onclick="attack()">攻撃</button>
-<button onclick="move()">移動</button>
+    <button id="cpuBattleBtn">
+        ⚔ CPU Battle
+    </button>
+
+    <button disabled>
+        🌍 Online Battle
+    </button>
+
+    <button disabled>
+        🧪 Magic Creation
+    </button>
+
+    <button disabled>
+        📖 Magic Library
+    </button>
+
+    <button disabled>
+        👤 Profile
+    </button>
+
+    <button id="backBtn">
+        ← Back
+    </button>
+
+</section>
+
+<!-- 戦闘画面 -->
+<section id="battleScreen" class="screen">
+
+    <h2>BATTLE</h2>
+
+    <div id="enemy">
+
+        <h3>Enemy</h3>
+
+        <p>
+            HP:
+            <span id="enemyHP">100</span>
+        </p>
+
+        <p>
+            Position:
+            <span id="enemyPos">?</span>
+        </p>
+
+    </div>
+
+    <hr>
+
+    <div id="battlefield">
+
+        <button data-lane="left">
+            左
+        </button>
+
+        <button data-lane="center">
+            中央
+        </button>
+
+        <button data-lane="right">
+            右
+        </button>
+
+    </div>
+
+    <hr>
+
+    <div id="player">
+
+        <h3>Player</h3>
+
+        <p>
+            HP:
+            <span id="playerHP">100</span>
+        </p>
+
+        <p>
+            MP:
+            <span id="playerMP">30</span>
+        </p>
+
+        <p>
+            Position:
+            <span id="playerPos">中央</span>
+        </p>
+
+        <button id="attackBtn">
+            攻撃
+        </button>
+
+        <button id="moveBtn">
+            移動
+        </button>
+
+    </div>
+
+    <div id="battleLog">
+
+        戦闘ログがここに表示されます
+
+    </div>
+
+</section>
+
+<!-- リザルト画面 -->
+<section id="resultScreen" class="screen">
+
+    <h2 id="resultText">
+
+        Result
+
+    </h2>
+
+    <button id="returnHomeBtn">
+
+        HOME
+
+    </button>
+
+</section>
+
+<!-- HELP -->
+<div id="helpModal">
+
+    <div class="modalContent">
+
+        <h2>HELP</h2>
+
+        <p>
+            3レーン制バトルです。
+        </p>
+
+        <button id="closeHelpBtn">
+
+            CLOSE
+
+        </button>
+
+    </div>
 
 </div>
 
