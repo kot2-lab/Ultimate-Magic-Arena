@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultimate Magic Arena</title>
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>Ultimate Magic Arena</h1>
+
+<div id="enemy">
+<h2>Enemy</h2>
+<div>HP: <span id="enemyHP">100</span></div>
+<div>Position: <span id="enemyPos">?</span></div>
+</div>
+
+<hr>
+
+<div id="battlefield">
+
+<button onclick="selectLane('left')">左</button>
+<button onclick="selectLane('center')">中央</button>
+<button onclick="selectLane('right')">右</button>
+
+</div>
+
+<hr>
+
+<div id="player">
+
+<h2>Player</h2>
+
+<div>HP: <span id="playerHP">100</span></div>
+<div>MP: <span id="playerMP">30</span></div>
+<div>Position: <span id="playerPos">中央</span></div>
+
+<button onclick="attack()">攻撃</button>
+<button onclick="move()">移動</button>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>

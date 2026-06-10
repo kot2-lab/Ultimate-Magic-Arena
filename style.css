@@ -1,0 +1,179 @@
+/* =========================
+   Ultimate Magic Arena
+   Arcane Cyber Theme
+========================= */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    min-height:100vh;
+    background:
+        radial-gradient(circle at top,#243b55 0%,#141e30 40%,#05060a 100%);
+    color:white;
+    font-family:
+        "Segoe UI",
+        "Noto Sans JP",
+        sans-serif;
+
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+
+    padding:20px;
+}
+
+/* タイトル */
+
+h1{
+    margin-bottom:20px;
+
+    font-size:2rem;
+    text-align:center;
+
+    color:#8cf7ff;
+
+    text-shadow:
+        0 0 10px #00d9ff,
+        0 0 20px #00d9ff,
+        0 0 40px #00d9ff;
+}
+
+/* 共通パネル */
+
+#enemy,
+#player{
+    width:min(95%,700px);
+
+    background:rgba(255,255,255,0.05);
+
+    border:1px solid rgba(140,247,255,0.3);
+
+    backdrop-filter:blur(10px);
+
+    border-radius:20px;
+
+    padding:20px;
+
+    margin:10px 0;
+
+    box-shadow:
+        0 0 20px rgba(0,217,255,0.15);
+}
+
+/* 戦闘エリア */
+
+#battlefield{
+    width:min(95%,700px);
+
+    display:flex;
+    justify-content:center;
+    gap:15px;
+
+    flex-wrap:wrap;
+
+    padding:25px;
+    margin:20px 0;
+
+    border-radius:20px;
+
+    background:rgba(255,255,255,0.03);
+
+    border:1px solid rgba(255,255,255,0.08);
+}
+
+/* ボタン */
+
+button{
+    border:none;
+
+    padding:12px 22px;
+
+    border-radius:14px;
+
+    cursor:pointer;
+
+    font-size:1rem;
+    font-weight:bold;
+
+    color:white;
+
+    background:
+        linear-gradient(
+            135deg,
+            #00bfff,
+            #7b2fff
+        );
+
+    transition:0.2s;
+}
+
+button:hover{
+    transform:
+        translateY(-2px)
+        scale(1.03);
+
+    box-shadow:
+        0 0 15px #00d9ff;
+}
+
+button:active{
+    transform:scale(0.97);
+}
+
+/* HP MP表示 */
+
+#enemy div,
+#player div{
+    margin-top:8px;
+}
+
+/* 区切り線 */
+
+hr{
+    width:min(95%,700px);
+
+    border:none;
+    height:1px;
+
+    background:
+        linear-gradient(
+            to right,
+            transparent,
+            #00d9ff,
+            transparent
+        );
+
+    margin:15px 0;
+}
+
+/* スマホ */
+
+@media(max-width:768px){
+
+    h1{
+        font-size:1.6rem;
+    }
+
+    button{
+        width:100%;
+    }
+
+    #battlefield{
+        flex-direction:column;
+    }
+
+}
+
+/* PC */
+
+@media(min-width:769px){
+
+    body{
+        padding:30px;
+    }
+
+}
