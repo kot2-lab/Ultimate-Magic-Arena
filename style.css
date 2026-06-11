@@ -1,0 +1,546 @@
+/* =====================================
+   Ultimate Magic Arena
+   Ver 0.2
+===================================== */
+
+:root{
+
+--gold:#d4af37;
+--gold-light:#f8e7a0;
+
+--purple:#5b3aa8;
+--purple-dark:#281542;
+
+--bg1:#0c0818;
+--bg2:#1a1030;
+--bg3:#2f1a52;
+
+--text:#f5f0e6;
+
+--hp:#ff4040;
+--hp2:#ff7070;
+
+--mp:#4f9cff;
+--mp2:#7ab8ff;
+
+}
+
+/* ========================= */
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+}
+
+body{
+
+font-family:
+"Noto Sans JP",
+sans-serif;
+
+background:
+linear-gradient(
+180deg,
+var(--bg1),
+var(--bg2),
+var(--bg3)
+);
+
+color:var(--text);
+
+min-height:100vh;
+
+overflow-x:hidden;
+
+}
+
+/* =========================
+   背景粒子
+========================= */
+
+body::before{
+
+content:"";
+
+position:fixed;
+
+inset:0;
+
+pointer-events:none;
+
+opacity:.08;
+
+background-image:
+radial-gradient(
+circle,
+white 1px,
+transparent 1px
+);
+
+background-size:
+100px 100px;
+
+animation:
+stars 20s linear infinite;
+
+}
+
+/* =========================
+   Screen
+========================= */
+
+.screen{
+
+display:none;
+
+min-height:100vh;
+
+padding:40px;
+
+text-align:center;
+
+}
+
+.active{
+
+display:flex;
+
+flex-direction:column;
+
+justify-content:center;
+
+align-items:center;
+
+}
+
+/* =========================
+   Title
+========================= */
+
+h1{
+
+font-size:3rem;
+
+color:var(--gold);
+
+text-shadow:
+0 0 10px var(--gold-light),
+0 0 20px var(--gold);
+
+margin-bottom:30px;
+
+}
+
+h2{
+
+margin-bottom:20px;
+color:var(--gold);
+
+}
+
+h3{
+
+margin-bottom:10px;
+
+}
+
+/* =========================
+   Magic Circle
+========================= */
+
+.magicCircle{
+
+width:350px;
+height:350px;
+
+border:
+3px solid rgba(212,175,55,.3);
+
+border-radius:50%;
+
+position:absolute;
+
+animation:
+rotateCircle 30s linear infinite;
+
+opacity:.3;
+
+}
+
+/* =========================
+   Buttons
+========================= */
+
+button{
+
+background:
+linear-gradient(
+180deg,
+var(--purple),
+var(--purple-dark)
+);
+
+border:
+2px solid var(--gold);
+
+border-radius:15px;
+
+padding:12px 24px;
+
+margin:8px;
+
+color:white;
+
+font-size:1rem;
+
+cursor:pointer;
+
+transition:.2s;
+
+}
+
+button:hover{
+
+transform:
+translateY(-2px);
+
+box-shadow:
+0 0 20px rgba(212,175,55,.5);
+
+}
+
+button:disabled{
+
+opacity:.4;
+
+cursor:not-allowed;
+
+}
+
+/* =========================
+   Player Card
+========================= */
+
+#playerCard{
+
+width:min(500px,90%);
+
+background:
+rgba(0,0,0,.25);
+
+border:
+2px solid var(--gold);
+
+border-radius:20px;
+
+padding:25px;
+
+margin-bottom:25px;
+
+backdrop-filter:
+blur(4px);
+
+}
+
+/* =========================
+   Panels
+========================= */
+
+#enemy,
+#player{
+
+width:min(900px,95%);
+
+background:
+rgba(0,0,0,.25);
+
+border:
+2px solid var(--gold);
+
+border-radius:20px;
+
+padding:20px;
+
+margin:15px;
+
+}
+
+/* =========================
+   Battle
+========================= */
+
+#battlefield{
+
+display:flex;
+
+gap:15px;
+
+justify-content:center;
+
+flex-wrap:wrap;
+
+margin:20px;
+
+}
+
+/* =========================
+   HP MP
+========================= */
+
+.stat{
+
+width:min(500px,90%);
+
+margin:15px auto;
+
+}
+
+.bar{
+
+height:22px;
+
+background:#222;
+
+border:
+1px solid #666;
+
+border-radius:999px;
+
+overflow:hidden;
+
+margin-top:5px;
+
+}
+
+.hpFill{
+
+height:100%;
+
+width:100%;
+
+background:
+linear-gradient(
+90deg,
+var(--hp),
+var(--hp2)
+);
+
+transition:.3s;
+
+}
+
+.mpFill{
+
+height:100%;
+
+width:100%;
+
+background:
+linear-gradient(
+90deg,
+var(--mp),
+var(--mp2)
+);
+
+transition:.3s;
+
+}
+
+/* =========================
+   Log
+========================= */
+
+#battleLog{
+
+width:min(900px,95%);
+
+height:220px;
+
+overflow-y:auto;
+
+padding:15px;
+
+background:
+rgba(0,0,0,.35);
+
+border:
+2px solid var(--gold);
+
+border-radius:15px;
+
+text-align:left;
+
+margin-top:20px;
+
+}
+
+/* =========================
+   Help
+========================= */
+
+#helpModal{
+
+display:none;
+
+position:fixed;
+
+inset:0;
+
+background:
+rgba(0,0,0,.8);
+
+justify-content:center;
+
+align-items:center;
+
+}
+
+.modalContent{
+
+width:min(600px,90%);
+
+background:
+var(--purple-dark);
+
+border:
+2px solid var(--gold);
+
+border-radius:20px;
+
+padding:30px;
+
+}
+
+/* =========================
+   Loading
+========================= */
+
+.loadingBar{
+
+width:300px;
+height:25px;
+
+border:
+2px solid var(--gold);
+
+border-radius:999px;
+
+overflow:hidden;
+
+margin-top:20px;
+
+}
+
+.loadingFill{
+
+height:100%;
+
+width:100%;
+
+background:
+linear-gradient(
+90deg,
+var(--gold),
+var(--gold-light)
+);
+
+animation:
+loading 2s linear;
+
+}
+
+/* =========================
+   CPU Select
+========================= */
+
+#cpuList{
+
+display:flex;
+
+flex-wrap:wrap;
+
+justify-content:center;
+
+max-width:900px;
+
+}
+
+/* =========================
+   Animations
+========================= */
+
+@keyframes stars{
+
+from{
+transform:translateY(0);
+}
+
+to{
+transform:translateY(-100px);
+}
+
+}
+
+@keyframes rotateCircle{
+
+from{
+transform:rotate(0deg);
+}
+
+to{
+transform:rotate(360deg);
+}
+
+}
+
+@keyframes loading{
+
+from{
+width:0%;
+}
+
+to{
+width:100%;
+}
+
+}
+
+/* =========================
+   Mobile
+========================= */
+
+@media(max-width:768px){
+
+h1{
+
+font-size:2rem;
+
+}
+
+.screen{
+
+padding:20px;
+
+}
+
+button{
+
+width:100%;
+
+}
+
+#battlefield{
+
+flex-direction:column;
+
+}
+
+.magicCircle{
+
+width:250px;
+height:250px;
+
+}
+
+}
