@@ -1,29 +1,32 @@
 // =====================================
 // Ultimate Magic Arena
-// Ver 0.2
+// Ver 0.3
 // =====================================
 
-// =======================
-// Screen System
-// =======================
+// =====================
+// Screen
+// =====================
 
-const screens = document.querySelectorAll(".screen");
+const screens =
+document.querySelectorAll(".screen");
 
 function showScreen(id){
 
-    screens.forEach(screen => {
+    screens.forEach(screen=>{
+
         screen.classList.remove("active");
+
     });
 
     document
-        .getElementById(id)
-        .classList.add("active");
+    .getElementById(id)
+    .classList.add("active");
 
 }
 
-// =======================
+// =====================
 // Save Data
-// =======================
+// =====================
 
 let playerData = {
 
@@ -51,7 +54,9 @@ function saveGame(){
 function loadGame(){
 
     const save =
-    localStorage.getItem("umaSave");
+    localStorage.getItem(
+        "umaSave"
+    );
 
     if(save){
 
@@ -62,27 +67,97 @@ function loadGame(){
 
 }
 
-// =======================
+// =====================
+// Magic List
+// =====================
+
+const magicList = [
+
+{
+name:"Fire Ball",
+damage:20,
+cost:5,
+effect:"🔥"
+},
+
+{
+name:"Ice Shot",
+damage:18,
+cost:4,
+effect:"❄"
+},
+
+{
+name:"Thunder Bolt",
+damage:25,
+cost:8,
+effect:"⚡"
+},
+
+{
+name:"Wind Cutter",
+damage:15,
+cost:3,
+effect:"🌪"
+},
+
+{
+name:"Stone Spike",
+damage:30,
+cost:10,
+effect:"🪨"
+}
+
+];
+
+// =====================
+// CPU
+// =====================
+
+const cpuData = {
+
+1:{
+name:"Goblin",
+image:"assets/images/enemy1.png"
+},
+
+2:{
+name:"Slime King",
+image:"assets/images/enemy2.png"
+},
+
+3:{
+name:"Magic Soldier",
+image:"assets/images/enemy3.png"
+}
+
+};
+
+// =====================
 // Battle Data
-// =======================
+// =====================
+
+let currentCpuLevel = 1;
 
 let enemyHP = 100;
 
 let playerPos = "center";
 
-let currentCpuLevel = 1;
-
 const lanes = [
-    "left",
-    "center",
-    "right"
+
+"left",
+"center",
+"right"
+
 ];
 
-// =======================
+// =====================
 // Loading
-// =======================
+// =====================
 
-window.addEventListener("load",()=>{
+window.addEventListener(
+"load",
+()=>{
 
     loadGame();
 
@@ -96,581 +171,668 @@ window.addEventListener("load",()=>{
 
     },2000);
 
-});
+}
+);
 
-// =======================
+// =====================
 // Title
-// =======================
+// =====================
 
 document
 .getElementById("startBtn")
-.addEventListener("click",()=>{
+.addEventListener(
+"click",
+()=>{
 
     showScreen(
         "homeScreen"
     );
 
-});
+}
+);
 
 document
 .getElementById("backBtn")
-.addEventListener("click",()=>{
+.addEventListener(
+"click",
+()=>{
 
     showScreen(
         "titleScreen"
     );
 
-});
+}
+);
 
-// =======================
+// =====================
 // Help
-// =======================
+// =====================
 
 const helpModal =
 document.getElementById(
-    "helpModal"
+"helpModal"
 );
 
 document
 .getElementById("helpBtn")
-.addEventListener("click",()=>{
+.addEventListener(
+"click",
+()=>{
 
-    helpModal.style.display =
-    "flex";
+helpModal.style.display =
+"flex";
 
-});
+}
+);
 
 document
-.getElementById(
-    "closeHelpBtn"
-)
-.addEventListener("click",()=>{
+.getElementById("closeHelpBtn")
+.addEventListener(
+"click",
+()=>{
 
-    helpModal.style.display =
-    "none";
+helpModal.style.display =
+"none";
 
-});
+}
+);
 
-// =======================
+// =====================
 // CPU Select
-// =======================
+// =====================
 
 document
-.getElementById(
-    "cpuBattleBtn"
-)
-.addEventListener("click",()=>{
+.getElementById("cpuBattleBtn")
+.addEventListener(
+"click",
+()=>{
 
-    showScreen(
-        "cpuSelectScreen"
-    );
+showScreen(
+"cpuSelectScreen"
+);
 
-});
+}
+);
 
 document
-.getElementById(
-    "cpuBackBtn"
-)
-.addEventListener("click",()=>{
+.getElementById("cpuBackBtn")
+.addEventListener(
+"click",
+()=>{
 
-    showScreen(
-        "homeScreen"
-    );
+showScreen(
+"homeScreen"
+);
 
-});
+}
+);
 
 document
 .querySelectorAll(".cpuBtn")
 .forEach(button=>{
 
-    button.addEventListener(
-        "click",
-        ()=>{
+button.addEventListener(
+"click",
+()=>{
 
-            currentCpuLevel =
-            Number(
-                button.dataset.level
-            );
+currentCpuLevel =
+Number(
+button.dataset.level
+);
 
-            startBattle();
+startBattle();
 
-        }
-    );
+}
+);
 
 });
 
-// =======================
-// Start Battle
-// =======================
+// =====================
+// Battle Start
+// =====================
 
 function startBattle(){
 
-    enemyHP =
-    100 +
-    (
-        currentCpuLevel * 20
-    );
+enemyHP =
+100 +
+currentCpuLevel * 20;
 
-    playerData.hp =
-    playerData.maxHP;
+playerData.hp =
+playerData.maxHP;
 
-    playerData.mp =
-    playerData.maxMP;
+playerData.mp =
+playerData.maxMP;
 
-    playerPos =
-    "center";
+playerPos =
+"center";
 
-    document
-    .getElementById("battleLog")
-    .innerHTML =
-    "Battle Start<br>";
+document
+.getElementById(
+"enemyImage"
+)
+.src =
+cpuData[
+currentCpuLevel
+].image;
 
-    updateUI();
+document
+.getElementById(
+"battleLog"
+)
+.innerHTML =
+"Battle Start<br>";
 
-    showScreen(
-        "battleScreen"
-    );
+showScreen(
+"battleScreen"
+);
+
+updateUI();
 
 }
 
-// =======================
-// Lane Buttons
-// =======================
+// =====================
+// Lane
+// =====================
 
 document
 .querySelectorAll(
-    "[data-lane]"
+"[data-lane]"
 )
 .forEach(button=>{
 
-    button.addEventListener(
-        "click",
-        ()=>{
+button.addEventListener(
+"click",
+()=>{
 
-            playerPos =
-            button.dataset.lane;
+playerPos =
+button.dataset.lane;
 
-            document
-            .getElementById(
-                "playerPos"
-            )
-            .textContent =
-            laneName(playerPos);
+document
+.getElementById(
+"playerPos"
+)
+.textContent =
+laneName(playerPos);
 
-            log(
-                "移動先を変更"
-            );
-
-        }
-    );
+}
+);
 
 });
 
-// =======================
+// =====================
 // Attack
-// =======================
+// =====================
 
 document
-.getElementById("attackBtn")
+.getElementById(
+"attackBtn"
+)
 .addEventListener(
-    "click",
-    attack
+"click",
+attack
 );
 
 function attack(){
 
-    const enemyPos =
-    randomLane();
+const magic =
+magicList[
+Math.floor(
+Math.random() *
+magicList.length
+)
+];
 
-    document
-    .getElementById(
-        "enemyPos"
-    )
-    .textContent =
-    laneName(enemyPos);
+if(
+playerData.mp <
+magic.cost
+){
 
-    if(playerPos === enemyPos){
+log(
+"MP不足"
+);
 
-        enemyHP -= 20;
-
-        log(
-            "攻撃命中！20ダメージ"
-        );
-
-    }else{
-
-        log(
-            "攻撃失敗"
-        );
-
-    }
-
-    enemyTurn();
-
-    mpRegen();
-
-    updateUI();
-
-    checkWinner();
+return;
 
 }
 
-// =======================
-// Move
-// =======================
+playerData.mp -=
+magic.cost;
+
+const enemyPos =
+randomLane();
 
 document
-.getElementById("moveBtn")
+.getElementById(
+"enemyPos"
+)
+.textContent =
+laneName(enemyPos);
+
+showEffect(
+magic.effect
+);
+
+if(
+enemyPos === playerPos
+){
+
+enemyHP -=
+magic.damage;
+
+showDamage(
+magic.damage
+);
+
+log(
+magic.name +
+" 命中!"
+);
+
+}else{
+
+log(
+magic.name +
+" ミス"
+);
+
+}
+
+enemyTurn();
+
+mpRegen();
+
+updateUI();
+
+checkWinner();
+
+}
+
+// =====================
+// Move
+// =====================
+
+document
+.getElementById(
+"moveBtn"
+)
 .addEventListener(
-    "click",
-    move
+"click",
+move
 );
 
 function move(){
 
-    playerPos =
-    randomLane();
+playerPos =
+randomLane();
 
-    document
-    .getElementById(
-        "playerPos"
-    )
-    .textContent =
-    laneName(playerPos);
+document
+.getElementById(
+"playerPos"
+)
+.textContent =
+laneName(playerPos);
 
-    log(
-        "移動した"
-    );
+log(
+"移動した"
+);
 
-    enemyTurn();
+enemyTurn();
 
-    mpRegen();
+mpRegen();
 
-    updateUI();
+updateUI();
 
-    checkWinner();
-
-}
-
-// =======================
-// MP Regen
-// =======================
-
-function mpRegen(){
-
-    const regen =
-    5 +
-    Math.floor(
-        playerData.level / 50
-    );
-
-    playerData.mp =
-    Math.min(
-        playerData.maxMP,
-        playerData.mp + regen
-    );
+checkWinner();
 
 }
 
-// =======================
+// =====================
+// Effect
+// =====================
+
+function showEffect(icon){
+
+const layer =
+document.getElementById(
+"effectLayer"
+);
+
+layer.innerHTML =
+`
+<div class="attackEffect">
+${icon}
+</div>
+`;
+
+setTimeout(()=>{
+
+layer.innerHTML = "";
+
+},600);
+
+}
+
+function showDamage(value){
+
+const popup =
+document.getElementById(
+"damagePopup"
+);
+
+popup.textContent =
+"-" + value;
+
+popup.classList.remove(
+"damageShow"
+);
+
+void popup.offsetWidth;
+
+popup.classList.add(
+"damageShow"
+);
+
+}
+
+// =====================
 // Enemy Turn
-// =======================
+// =====================
 
 function enemyTurn(){
 
-    const attackPos =
-    randomLane();
+const pos =
+randomLane();
 
-    if(
-        attackPos === playerPos
-    ){
+if(
+pos === playerPos
+){
 
-        playerData.hp -=
-        10 +
-        currentCpuLevel * 2;
+const damage =
+10 +
+currentCpuLevel * 2;
 
-        log(
-            "敵の攻撃命中"
-        );
+playerData.hp -=
+damage;
 
-    }else{
+showDamage(
+damage
+);
 
-        log(
-            "敵の攻撃失敗"
-        );
+log(
+"敵攻撃命中"
+);
 
-    }
+}else{
+
+log(
+"敵攻撃失敗"
+);
 
 }
 
-// =======================
+}
+
+// =====================
 // EXP
-// =======================
+// =====================
 
 function giveRewards(){
 
-    let exp =
+const exp =
 
-        randomInt(10,30)
+100 +
 
-        +
+currentCpuLevel * 25;
 
-        randomInt(100,120);
+playerData.exp +=
+exp;
 
-    playerData.exp += exp;
+document
+.getElementById(
+"rewardArea"
+)
+.textContent =
+"EXP +" + exp;
 
-    document
-    .getElementById(
-        "rewardArea"
-    )
-    .textContent =
-    "EXP +" + exp;
+levelCheck();
 
-    levelCheck();
-
-    saveGame();
+saveGame();
 
 }
 
 function levelCheck(){
 
-    let need =
-    playerData.level * 100;
+let need =
+playerData.level * 100;
 
-    while(
-        playerData.exp >= need
-    ){
+while(
+playerData.exp >= need
+){
 
-        playerData.exp -= need;
+playerData.exp -=
+need;
 
-        playerData.level++;
+playerData.level++;
 
-        playerData.maxHP += 5;
+playerData.maxHP += 5;
+playerData.maxMP += 2;
 
-        playerData.maxMP += 2;
-
-        log(
-            "Level Up!"
-        );
-
-        need =
-        playerData.level * 100;
-
-    }
+need =
+playerData.level * 100;
 
 }
 
-// =======================
+}
+
+// =====================
+// MP
+// =====================
+
+function mpRegen(){
+
+playerData.mp =
+Math.min(
+
+playerData.maxMP,
+
+playerData.mp + 3
+
+);
+
+}
+
+// =====================
 // Winner
-// =======================
+// =====================
 
 function checkWinner(){
 
-    if(enemyHP <= 0){
+if(enemyHP <= 0){
 
-        giveRewards();
-
-        document
-        .getElementById(
-            "resultText"
-        )
-        .textContent =
-        "Victory";
-
-        showScreen(
-            "resultScreen"
-        );
-
-        updateUI();
-
-    }
-
-    if(playerData.hp <= 0){
-
-        document
-        .getElementById(
-            "resultText"
-        )
-        .textContent =
-        "Defeat";
-
-        showScreen(
-            "resultScreen"
-        );
-
-    }
-
-}
-
-// =======================
-// Result
-// =======================
+giveRewards();
 
 document
 .getElementById(
-    "returnHomeBtn"
+"resultText"
 )
-.addEventListener(
-    "click",
-    ()=>{
+.textContent =
+"Victory";
 
-        saveGame();
-
-        updateUI();
-
-        showScreen(
-            "homeScreen"
-        );
-
-    }
+showScreen(
+"resultScreen"
 );
 
-// =======================
+}
+
+if(playerData.hp <= 0){
+
+document
+.getElementById(
+"resultText"
+)
+.textContent =
+"Defeat";
+
+showScreen(
+"resultScreen"
+);
+
+}
+
+}
+
+// =====================
+// Result
+// =====================
+
+document
+.getElementById(
+"returnHomeBtn"
+)
+.addEventListener(
+"click",
+()=>{
+
+saveGame();
+
+updateUI();
+
+showScreen(
+"homeScreen"
+);
+
+}
+);
+
+// =====================
 // UI
-// =======================
+// =====================
 
 function updateUI(){
 
-    document
-    .getElementById(
-        "playerHP"
-    )
-    .textContent =
-    playerData.hp;
+document
+.getElementById(
+"playerLevel"
+)
+.textContent =
+playerData.level;
 
-    document
-    .getElementById(
-        "playerMP"
-    )
-    .textContent =
-    playerData.mp;
+document
+.getElementById(
+"playerEXP"
+)
+.textContent =
+playerData.exp;
 
-    document
-    .getElementById(
-        "playerMaxHP"
-    )
-    .textContent =
-    playerData.maxHP;
+document
+.getElementById(
+"playerRate"
+)
+.textContent =
+playerData.rate;
 
-    document
-    .getElementById(
-        "playerMaxMP"
-    )
-    .textContent =
-    playerData.maxMP;
+document
+.getElementById(
+"playerHP"
+)
+.textContent =
+playerData.hp;
 
-    document
-    .getElementById(
-        "enemyHP"
-    )
-    .textContent =
-    enemyHP;
+document
+.getElementById(
+"playerMP"
+)
+.textContent =
+playerData.mp;
 
-    document
-    .getElementById(
-        "playerLevel"
-    )
-    .textContent =
-    playerData.level;
+document
+.getElementById(
+"playerMaxHP"
+)
+.textContent =
+playerData.maxHP;
 
-    document
-    .getElementById(
-        "playerEXP"
-    )
-    .textContent =
-    playerData.exp;
+document
+.getElementById(
+"playerMaxMP"
+)
+.textContent =
+playerData.maxMP;
 
-    document
-    .getElementById(
-        "playerRate"
-    )
-    .textContent =
-    playerData.rate;
+document
+.getElementById(
+"enemyHP"
+)
+.textContent =
+enemyHP;
 
-    document
-    .getElementById(
-        "playerHPFill"
-    )
-    .style.width =
-    (
-        playerData.hp /
-        playerData.maxHP
-    ) * 100 + "%";
+document
+.getElementById(
+"playerHPFill"
+)
+.style.width =
+(
+playerData.hp /
+playerData.maxHP
+) * 100 + "%";
 
-    document
-    .getElementById(
-        "playerMPFill"
-    )
-    .style.width =
-    (
-        playerData.mp /
-        playerData.maxMP
-    ) * 100 + "%";
+document
+.getElementById(
+"playerMPFill"
+)
+.style.width =
+(
+playerData.mp /
+playerData.maxMP
+) * 100 + "%";
 
 }
 
-// =======================
+// =====================
 // Log
-// =======================
+// =====================
 
 function log(text){
 
-    document
-    .getElementById(
-        "battleLog"
-    )
-    .innerHTML =
-    text +
-    "<br>" +
-    document
-    .getElementById(
-        "battleLog"
-    )
-    .innerHTML;
+document
+.getElementById(
+"battleLog"
+)
+.innerHTML =
+
+text +
+
+"<br>" +
+
+document
+.getElementById(
+"battleLog"
+)
+.innerHTML;
 
 }
 
-// =======================
+// =====================
 // Utility
-// =======================
+// =====================
 
 function randomLane(){
 
-    return lanes[
-        Math.floor(
-            Math.random() *
-            lanes.length
-        )
-    ];
-
-}
-
-function randomInt(
-    min,
-    max
-){
-
-    return Math.floor(
-        Math.random() *
-        (max - min + 1)
-    ) + min;
+return lanes[
+Math.floor(
+Math.random() *
+lanes.length
+)
+];
 
 }
 
 function laneName(lane){
 
-    if(lane==="left"){
-        return "左";
-    }
+if(lane==="left") return "左";
+if(lane==="center") return "中央";
+if(lane==="right") return "右";
 
-    if(lane==="center"){
-        return "中央";
-    }
-
-    if(lane==="right"){
-        return "右";
-    }
-
-    return "?";
+return "?";
 
 }
