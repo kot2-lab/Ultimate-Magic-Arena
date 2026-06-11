@@ -1,31 +1,29 @@
 /* =====================================
    Ultimate Magic Arena
-   Ver 0.2
+   Ver 0.3
 ===================================== */
 
 :root{
 
 --gold:#d4af37;
---gold-light:#f8e7a0;
+--gold-light:#f6e6a6;
 
---purple:#5b3aa8;
---purple-dark:#281542;
+--bg1:#120d1f;
+--bg2:#211635;
+--bg3:#38235b;
 
---bg1:#0c0818;
---bg2:#1a1030;
---bg3:#2f1a52;
+--panel:rgba(20,15,35,.85);
 
---text:#f5f0e6;
+--hp:#e04848;
+--mp:#4a8dff;
 
---hp:#ff4040;
---hp2:#ff7070;
-
---mp:#4f9cff;
---mp2:#7ab8ff;
+--text:#f4f0e7;
 
 }
 
-/* ========================= */
+/* =====================
+   Base
+===================== */
 
 *{
 margin:0;
@@ -39,6 +37,8 @@ font-family:
 "Noto Sans JP",
 sans-serif;
 
+color:var(--text);
+
 background:
 linear-gradient(
 180deg,
@@ -47,17 +47,15 @@ var(--bg2),
 var(--bg3)
 );
 
-color:var(--text);
-
 min-height:100vh;
 
 overflow-x:hidden;
 
 }
 
-/* =========================
-   背景粒子
-========================= */
+/* =====================
+   Magic Particles
+===================== */
 
 body::before{
 
@@ -69,26 +67,26 @@ inset:0;
 
 pointer-events:none;
 
-opacity:.08;
-
 background-image:
 radial-gradient(
 circle,
-white 1px,
+rgba(255,255,255,.5) 1px,
 transparent 1px
 );
 
 background-size:
-100px 100px;
+120px 120px;
+
+opacity:.08;
 
 animation:
-stars 20s linear infinite;
+particles 30s linear infinite;
 
 }
 
-/* =========================
-   Screen
-========================= */
+/* =====================
+   Screens
+===================== */
 
 .screen{
 
@@ -96,7 +94,7 @@ display:none;
 
 min-height:100vh;
 
-padding:40px;
+padding:30px;
 
 text-align:center;
 
@@ -114,87 +112,89 @@ align-items:center;
 
 }
 
-/* =========================
-   Title
-========================= */
+/* =====================
+   Titles
+===================== */
 
 h1{
 
-font-size:3rem;
+font-size:4rem;
 
 color:var(--gold);
 
-text-shadow:
-0 0 10px var(--gold-light),
-0 0 20px var(--gold);
+margin-bottom:20px;
 
-margin-bottom:30px;
+text-shadow:
+0 0 10px rgba(255,220,120,.4);
 
 }
 
 h2{
 
-margin-bottom:20px;
 color:var(--gold);
 
-}
-
-h3{
-
-margin-bottom:10px;
+margin-bottom:20px;
 
 }
 
-/* =========================
+.subtitle{
+
+font-size:1.2rem;
+
+opacity:.85;
+
+margin-bottom:30px;
+
+}
+
+/* =====================
    Magic Circle
-========================= */
+===================== */
 
 .magicCircle{
 
-width:350px;
-height:350px;
+position:absolute;
+
+width:450px;
+height:450px;
 
 border:
-3px solid rgba(212,175,55,.3);
+3px solid rgba(212,175,55,.2);
 
 border-radius:50%;
 
-position:absolute;
-
 animation:
-rotateCircle 30s linear infinite;
-
-opacity:.3;
+rotateCircle 25s linear infinite;
 
 }
 
-/* =========================
+/* =====================
    Buttons
-========================= */
+===================== */
 
 button{
 
 background:
 linear-gradient(
 180deg,
-var(--purple),
-var(--purple-dark)
+#7850c9,
+#452672
 );
+
+color:white;
 
 border:
 2px solid var(--gold);
 
-border-radius:15px;
+border-radius:14px;
 
 padding:12px 24px;
 
 margin:8px;
 
-color:white;
+cursor:pointer;
 
 font-size:1rem;
-
-cursor:pointer;
 
 transition:.2s;
 
@@ -206,28 +206,28 @@ transform:
 translateY(-2px);
 
 box-shadow:
-0 0 20px rgba(212,175,55,.5);
+0 0 15px rgba(212,175,55,.4);
 
 }
 
 button:disabled{
 
-opacity:.4;
+opacity:.45;
 
 cursor:not-allowed;
 
 }
 
-/* =========================
+/* =====================
    Player Card
-========================= */
+===================== */
 
 #playerCard{
 
-width:min(500px,90%);
+width:min(500px,95%);
 
 background:
-rgba(0,0,0,.25);
+var(--panel);
 
 border:
 2px solid var(--gold);
@@ -238,14 +238,25 @@ padding:25px;
 
 margin-bottom:25px;
 
-backdrop-filter:
-blur(4px);
+}
+
+/* =====================
+   Menu
+===================== */
+
+.menuGrid{
+
+display:flex;
+
+flex-direction:column;
+
+width:min(350px,95%);
 
 }
 
-/* =========================
-   Panels
-========================= */
+/* =====================
+   Battle Panels
+===================== */
 
 #enemy,
 #player{
@@ -253,7 +264,7 @@ blur(4px);
 width:min(900px,95%);
 
 background:
-rgba(0,0,0,.25);
+var(--panel);
 
 border:
 2px solid var(--gold);
@@ -266,15 +277,38 @@ margin:15px;
 
 }
 
-/* =========================
-   Battle
-========================= */
+/* =====================
+   Character Images
+===================== */
+
+.characterImage{
+
+width:160px;
+
+height:160px;
+
+object-fit:cover;
+
+border-radius:50%;
+
+border:
+3px solid var(--gold);
+
+margin-bottom:15px;
+
+background:#000;
+
+}
+
+/* =====================
+   Lane Buttons
+===================== */
 
 #battlefield{
 
 display:flex;
 
-gap:15px;
+gap:12px;
 
 justify-content:center;
 
@@ -284,13 +318,13 @@ margin:20px;
 
 }
 
-/* =========================
+/* =====================
    HP MP
-========================= */
+===================== */
 
 .stat{
 
-width:min(500px,90%);
+width:min(500px,95%);
 
 margin:15px auto;
 
@@ -302,12 +336,12 @@ height:22px;
 
 background:#222;
 
-border:
-1px solid #666;
-
 border-radius:999px;
 
 overflow:hidden;
+
+border:
+1px solid #555;
 
 margin-top:5px;
 
@@ -322,11 +356,11 @@ width:100%;
 background:
 linear-gradient(
 90deg,
-var(--hp),
-var(--hp2)
+#ff6b6b,
+var(--hp)
 );
 
-transition:.3s;
+transition:.4s;
 
 }
 
@@ -339,17 +373,84 @@ width:100%;
 background:
 linear-gradient(
 90deg,
-var(--mp),
-var(--mp2)
+#7db3ff,
+var(--mp)
 );
 
-transition:.3s;
+transition:.4s;
 
 }
 
-/* =========================
-   Log
-========================= */
+/* =====================
+   Attack Effect
+===================== */
+
+#effectLayer{
+
+position:fixed;
+
+inset:0;
+
+pointer-events:none;
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+z-index:999;
+
+}
+
+.attackEffect{
+
+font-size:120px;
+
+animation:
+attackFlash .6s ease-out;
+
+}
+
+/* =====================
+   Damage Popup
+===================== */
+
+#damagePopup{
+
+position:fixed;
+
+left:50%;
+
+top:45%;
+
+transform:
+translateX(-50%);
+
+font-size:50px;
+
+font-weight:bold;
+
+color:#ff6666;
+
+pointer-events:none;
+
+opacity:0;
+
+z-index:1000;
+
+}
+
+.damageShow{
+
+animation:
+damagePop 1s forwards;
+
+}
+
+/* =====================
+   Battle Log
+===================== */
 
 #battleLog{
 
@@ -362,7 +463,7 @@ overflow-y:auto;
 padding:15px;
 
 background:
-rgba(0,0,0,.35);
+rgba(0,0,0,.4);
 
 border:
 2px solid var(--gold);
@@ -371,13 +472,11 @@ border-radius:15px;
 
 text-align:left;
 
-margin-top:20px;
-
 }
 
-/* =========================
+/* =====================
    Help
-========================= */
+===================== */
 
 #helpModal{
 
@@ -401,25 +500,26 @@ align-items:center;
 width:min(600px,90%);
 
 background:
-var(--purple-dark);
+#22183a;
+
+padding:30px;
+
+border-radius:20px;
 
 border:
 2px solid var(--gold);
 
-border-radius:20px;
-
-padding:30px;
-
 }
 
-/* =========================
+/* =====================
    Loading
-========================= */
+===================== */
 
 .loadingBar{
 
-width:300px;
-height:25px;
+width:320px;
+
+height:24px;
 
 border:
 2px solid var(--gold);
@@ -436,8 +536,6 @@ margin-top:20px;
 
 height:100%;
 
-width:100%;
-
 background:
 linear-gradient(
 90deg,
@@ -450,9 +548,9 @@ loading 2s linear;
 
 }
 
-/* =========================
-   CPU Select
-========================= */
+/* =====================
+   CPU
+===================== */
 
 #cpuList{
 
@@ -466,21 +564,9 @@ max-width:900px;
 
 }
 
-/* =========================
+/* =====================
    Animations
-========================= */
-
-@keyframes stars{
-
-from{
-transform:translateY(0);
-}
-
-to{
-transform:translateY(-100px);
-}
-
-}
+===================== */
 
 @keyframes rotateCircle{
 
@@ -506,21 +592,79 @@ width:100%;
 
 }
 
-/* =========================
+@keyframes particles{
+
+from{
+transform:translateY(0);
+}
+
+to{
+transform:translateY(-120px);
+}
+
+}
+
+@keyframes attackFlash{
+
+0%{
+
+opacity:0;
+transform:scale(.2);
+
+}
+
+50%{
+
+opacity:1;
+transform:scale(1.3);
+
+}
+
+100%{
+
+opacity:0;
+transform:scale(2);
+
+}
+
+}
+
+@keyframes damagePop{
+
+0%{
+
+opacity:1;
+transform:
+translate(-50%,0);
+
+}
+
+100%{
+
+opacity:0;
+transform:
+translate(-50%,-80px);
+
+}
+
+}
+
+/* =====================
    Mobile
-========================= */
+===================== */
 
 @media(max-width:768px){
 
 h1{
 
-font-size:2rem;
+font-size:2.2rem;
 
 }
 
-.screen{
+.magicCircle{
 
-padding:20px;
+width:250px;
+height:250px;
 
 }
 
@@ -536,10 +680,10 @@ flex-direction:column;
 
 }
 
-.magicCircle{
+.characterImage{
 
-width:250px;
-height:250px;
+width:120px;
+height:120px;
 
 }
 
