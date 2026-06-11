@@ -8,61 +8,176 @@
 
 <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<!-- ロード画面 -->
+<!-- =========================
+     LOADING
+========================= -->
+
 <section id="loadingScreen" class="screen active">
 
     <h1>Ultimate Magic Arena</h1>
 
     <p>Loading Magic Systems...</p>
 
+    <div class="loadingBar">
+        <div class="loadingFill"></div>
+    </div>
+
 </section>
 
-<!-- タイトル画面 -->
+<!-- =========================
+     TITLE
+========================= -->
+
 <section id="titleScreen" class="screen">
+
+    <div class="magicCircle"></div>
 
     <h1>Ultimate Magic Arena</h1>
 
-    <button id="startBtn">START</button>
-    <button id="helpBtn">HELP</button>
-    <button id="settingsBtn">SETTINGS</button>
+    <div class="menuContainer">
+
+        <button id="startBtn">
+            START
+        </button>
+
+        <button id="helpBtn">
+            HELP
+        </button>
+
+        <button id="settingsBtn">
+            SETTINGS
+        </button>
+
+    </div>
 
 </section>
 
-<!-- ホーム画面 -->
+<!-- =========================
+     HOME
+========================= -->
+
 <section id="homeScreen" class="screen">
 
-    <h2>HOME</h2>
+    <div id="playerCard">
 
-    <button id="cpuBattleBtn">
-        ⚔ CPU Battle
-    </button>
+        <h2>PLAYER DATA</h2>
 
-    <button disabled>
-        🌍 Online Battle
-    </button>
+        <p>
+            Level :
+            <span id="playerLevel">1</span>
+        </p>
 
-    <button disabled>
-        🧪 Magic Creation
-    </button>
+        <p>
+            EXP :
+            <span id="playerEXP">0</span>
+        </p>
 
-    <button disabled>
-        📖 Magic Library
-    </button>
+        <p>
+            Rate :
+            <span id="playerRate">1000</span>
+        </p>
 
-    <button disabled>
-        👤 Profile
-    </button>
+        <p>
+            Rank :
+            <span id="playerRank">F</span>
+        </p>
 
-    <button id="backBtn">
+    </div>
+
+    <div class="menuGrid">
+
+        <button id="cpuBattleBtn">
+            ⚔ CPU Battle
+        </button>
+
+        <button disabled>
+            🌍 Online Battle
+        </button>
+
+        <button disabled>
+            🧪 Magic Creation
+        </button>
+
+        <button disabled>
+            📖 Magic Library
+        </button>
+
+        <button disabled>
+            👤 Profile
+        </button>
+
+        <button id="backBtn">
+            ← Back
+        </button>
+
+    </div>
+
+</section>
+
+<!-- =========================
+     CPU SELECT
+========================= -->
+
+<section id="cpuSelectScreen" class="screen">
+
+    <h2>CPU SELECT</h2>
+
+    <div id="cpuList">
+
+        <button class="cpuBtn" data-level="1">
+            CPU Lv1
+        </button>
+
+        <button class="cpuBtn" data-level="2">
+            CPU Lv2
+        </button>
+
+        <button class="cpuBtn" data-level="3">
+            CPU Lv3
+        </button>
+
+        <button disabled>
+            CPU Lv4
+        </button>
+
+        <button disabled>
+            CPU Lv5
+        </button>
+
+        <button disabled>
+            CPU Lv6
+        </button>
+
+        <button disabled>
+            CPU Lv7
+        </button>
+
+        <button disabled>
+            CPU Lv8
+        </button>
+
+        <button disabled>
+            CPU Lv9
+        </button>
+
+        <button disabled>
+            CPU Lv10
+        </button>
+
+    </div>
+
+    <button id="cpuBackBtn">
         ← Back
     </button>
 
 </section>
 
-<!-- 戦闘画面 -->
+<!-- =========================
+     BATTLE
+========================= -->
+
 <section id="battleScreen" class="screen">
 
     <h2>BATTLE</h2>
@@ -72,18 +187,16 @@
         <h3>Enemy</h3>
 
         <p>
-            HP:
+            HP :
             <span id="enemyHP">100</span>
         </p>
 
         <p>
-            Position:
+            Position :
             <span id="enemyPos">?</span>
         </p>
 
     </div>
-
-    <hr>
 
     <div id="battlefield">
 
@@ -101,46 +214,79 @@
 
     </div>
 
-    <hr>
-
     <div id="player">
 
         <h3>Player</h3>
 
-        <p>
-            HP:
-            <span id="playerHP">100</span>
-        </p>
+        <div class="stat">
+
+            <div>
+                HP
+                <span id="playerHP">100</span>
+                /
+                <span id="playerMaxHP">100</span>
+            </div>
+
+            <div class="bar">
+
+                <div
+                    id="playerHPFill"
+                    class="hpFill">
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="stat">
+
+            <div>
+                MP
+                <span id="playerMP">30</span>
+                /
+                <span id="playerMaxMP">30</span>
+            </div>
+
+            <div class="bar">
+
+                <div
+                    id="playerMPFill"
+                    class="mpFill">
+                </div>
+
+            </div>
+
+        </div>
 
         <p>
-            MP:
-            <span id="playerMP">30</span>
-        </p>
-
-        <p>
-            Position:
-            <span id="playerPos">中央</span>
+            Position :
+            <span id="playerPos">
+                中央
+            </span>
         </p>
 
         <button id="attackBtn">
-            攻撃
+            Attack
         </button>
 
         <button id="moveBtn">
-            移動
+            Move
         </button>
 
     </div>
 
     <div id="battleLog">
 
-        戦闘ログがここに表示されます
+        Welcome to Ultimate Magic Arena
 
     </div>
 
 </section>
 
-<!-- リザルト画面 -->
+<!-- =========================
+     RESULT
+========================= -->
+
 <section id="resultScreen" class="screen">
 
     <h2 id="resultText">
@@ -148,6 +294,12 @@
         Result
 
     </h2>
+
+    <div id="rewardArea">
+
+        EXP +0
+
+    </div>
 
     <button id="returnHomeBtn">
 
@@ -157,7 +309,10 @@
 
 </section>
 
-<!-- HELP -->
+<!-- =========================
+     HELP
+========================= -->
+
 <div id="helpModal">
 
     <div class="modalContent">
@@ -165,7 +320,20 @@
         <h2>HELP</h2>
 
         <p>
-            3レーン制バトルです。
+            3レーン制バトル
+        </p>
+
+        <p>
+            レベル上限999
+        </p>
+
+        <p>
+            MPは毎ターン回復
+        </p>
+
+        <p>
+            魔法作成システムは
+            Ver0.3予定
         </p>
 
         <button id="closeHelpBtn">
