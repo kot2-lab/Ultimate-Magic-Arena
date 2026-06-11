@@ -1,23 +1,31 @@
-/* ==========================
+/* =====================================
    Ultimate Magic Arena
-   Fantasy RPG Theme
-========================== */
+   Ver 0.2
+===================================== */
 
 :root{
 
 --gold:#d4af37;
 --gold-light:#f8e7a0;
 
---purple:#4d2d83;
+--purple:#5b3aa8;
 --purple-dark:#281542;
 
---bg1:#0f091a;
+--bg1:#0c0818;
 --bg2:#1a1030;
---bg3:#2a1948;
+--bg3:#2f1a52;
 
 --text:#f5f0e6;
 
+--hp:#ff4040;
+--hp2:#ff7070;
+
+--mp:#4f9cff;
+--mp2:#7ab8ff;
+
 }
+
+/* ========================= */
 
 *{
 margin:0;
@@ -47,9 +55,9 @@ overflow-x:hidden;
 
 }
 
-/* ===================
-   魔法粒子
-=================== */
+/* =========================
+   背景粒子
+========================= */
 
 body::before{
 
@@ -61,7 +69,7 @@ inset:0;
 
 pointer-events:none;
 
-opacity:.12;
+opacity:.08;
 
 background-image:
 radial-gradient(
@@ -71,16 +79,16 @@ transparent 1px
 );
 
 background-size:
-120px 120px;
+100px 100px;
 
 animation:
 stars 20s linear infinite;
 
 }
 
-/* ===================
-   画面
-=================== */
+/* =========================
+   Screen
+========================= */
 
 .screen{
 
@@ -106,28 +114,27 @@ align-items:center;
 
 }
 
-/* ===================
-   タイトル
-=================== */
+/* =========================
+   Title
+========================= */
 
 h1{
 
 font-size:3rem;
 
-margin-bottom:30px;
-
 color:var(--gold);
 
 text-shadow:
-0 0 8px var(--gold-light),
+0 0 10px var(--gold-light),
 0 0 20px var(--gold);
+
+margin-bottom:30px;
 
 }
 
 h2{
 
 margin-bottom:20px;
-
 color:var(--gold);
 
 }
@@ -138,29 +145,52 @@ margin-bottom:10px;
 
 }
 
-/* ===================
-   ボタン
-=================== */
+/* =========================
+   Magic Circle
+========================= */
+
+.magicCircle{
+
+width:350px;
+height:350px;
+
+border:
+3px solid rgba(212,175,55,.3);
+
+border-radius:50%;
+
+position:absolute;
+
+animation:
+rotateCircle 30s linear infinite;
+
+opacity:.3;
+
+}
+
+/* =========================
+   Buttons
+========================= */
 
 button{
 
 background:
 linear-gradient(
 180deg,
-#7045b5,
-#3f246d
+var(--purple),
+var(--purple-dark)
 );
-
-color:white;
 
 border:
 2px solid var(--gold);
 
-border-radius:14px;
+border-radius:15px;
 
 padding:12px 24px;
 
 margin:8px;
+
+color:white;
 
 font-size:1rem;
 
@@ -176,21 +206,46 @@ transform:
 translateY(-2px);
 
 box-shadow:
-0 0 15px rgba(212,175,55,.5);
+0 0 20px rgba(212,175,55,.5);
 
 }
 
 button:disabled{
 
-opacity:.5;
+opacity:.4;
 
 cursor:not-allowed;
 
 }
 
-/* ===================
-   パネル
-=================== */
+/* =========================
+   Player Card
+========================= */
+
+#playerCard{
+
+width:min(500px,90%);
+
+background:
+rgba(0,0,0,.25);
+
+border:
+2px solid var(--gold);
+
+border-radius:20px;
+
+padding:25px;
+
+margin-bottom:25px;
+
+backdrop-filter:
+blur(4px);
+
+}
+
+/* =========================
+   Panels
+========================= */
 
 #enemy,
 #player{
@@ -209,14 +264,11 @@ padding:20px;
 
 margin:15px;
 
-backdrop-filter:
-blur(4px);
-
 }
 
-/* ===================
-   レーン選択
-=================== */
+/* =========================
+   Battle
+========================= */
 
 #battlefield{
 
@@ -224,29 +276,90 @@ display:flex;
 
 gap:15px;
 
-flex-wrap:wrap;
-
 justify-content:center;
+
+flex-wrap:wrap;
 
 margin:20px;
 
 }
 
-/* ===================
-   戦闘ログ
-=================== */
+/* =========================
+   HP MP
+========================= */
+
+.stat{
+
+width:min(500px,90%);
+
+margin:15px auto;
+
+}
+
+.bar{
+
+height:22px;
+
+background:#222;
+
+border:
+1px solid #666;
+
+border-radius:999px;
+
+overflow:hidden;
+
+margin-top:5px;
+
+}
+
+.hpFill{
+
+height:100%;
+
+width:100%;
+
+background:
+linear-gradient(
+90deg,
+var(--hp),
+var(--hp2)
+);
+
+transition:.3s;
+
+}
+
+.mpFill{
+
+height:100%;
+
+width:100%;
+
+background:
+linear-gradient(
+90deg,
+var(--mp),
+var(--mp2)
+);
+
+transition:.3s;
+
+}
+
+/* =========================
+   Log
+========================= */
 
 #battleLog{
 
 width:min(900px,95%);
 
-height:200px;
+height:220px;
 
 overflow-y:auto;
 
 padding:15px;
-
-margin-top:20px;
 
 background:
 rgba(0,0,0,.35);
@@ -258,11 +371,13 @@ border-radius:15px;
 
 text-align:left;
 
+margin-top:20px;
+
 }
 
-/* ===================
-   HELP
-=================== */
+/* =========================
+   Help
+========================= */
 
 #helpModal{
 
@@ -297,35 +412,63 @@ padding:30px;
 
 }
 
-/* ===================
-   HOME
-=================== */
-
-#homeScreen button{
-
-width:280px;
-
-}
-
-/* ===================
-   ロード画面
-=================== */
+/* =========================
+   Loading
+========================= */
 
 .loadingBar{
 
 width:300px;
-height:20px;
+height:25px;
 
 border:
 2px solid var(--gold);
+
+border-radius:999px;
+
+overflow:hidden;
 
 margin-top:20px;
 
 }
 
-/* ===================
-   アニメーション
-=================== */
+.loadingFill{
+
+height:100%;
+
+width:100%;
+
+background:
+linear-gradient(
+90deg,
+var(--gold),
+var(--gold-light)
+);
+
+animation:
+loading 2s linear;
+
+}
+
+/* =========================
+   CPU Select
+========================= */
+
+#cpuList{
+
+display:flex;
+
+flex-wrap:wrap;
+
+justify-content:center;
+
+max-width:900px;
+
+}
+
+/* =========================
+   Animations
+========================= */
 
 @keyframes stars{
 
@@ -334,31 +477,70 @@ transform:translateY(0);
 }
 
 to{
-transform:translateY(-120px);
+transform:translateY(-100px);
 }
 
 }
 
-/* ===================
-   スマホ
-=================== */
+@keyframes rotateCircle{
+
+from{
+transform:rotate(0deg);
+}
+
+to{
+transform:rotate(360deg);
+}
+
+}
+
+@keyframes loading{
+
+from{
+width:0%;
+}
+
+to{
+width:100%;
+}
+
+}
+
+/* =========================
+   Mobile
+========================= */
 
 @media(max-width:768px){
 
 h1{
+
 font-size:2rem;
+
 }
 
 .screen{
+
 padding:20px;
+
 }
 
 button{
+
 width:100%;
+
 }
 
 #battlefield{
+
 flex-direction:column;
+
+}
+
+.magicCircle{
+
+width:250px;
+height:250px;
+
 }
 
 }
