@@ -1,6 +1,10 @@
-// =======================
+// =====================================
 // Ultimate Magic Arena
-// Core System Ver0.1
+// Ver 0.2
+// =====================================
+
+// =======================
+// Screen System
 // =======================
 
 const screens = document.querySelectorAll(".screen");
@@ -17,97 +21,56 @@ function showScreen(id){
 
 }
 
-// -----------------------
-// 初期ロード
-// -----------------------
-
-window.addEventListener("load", () => {
-
-    setTimeout(() => {
-
-        showScreen("titleScreen");
-
-    }, 2000);
-
-});
-
-// -----------------------
-// タイトル画面
-// -----------------------
-
-document
-.getElementById("startBtn")
-.addEventListener("click", () => {
-
-    showScreen("homeScreen");
-
-});
-
-document
-.getElementById("backBtn")
-.addEventListener("click", () => {
-
-    showScreen("titleScreen");
-
-});
-
-// -----------------------
-// HELP
-// -----------------------
-
-const helpModal =
-document.getElementById("helpModal");
-
-document
-.getElementById("helpBtn")
-.addEventListener("click", () => {
-
-    helpModal.style.display = "flex";
-
-});
-
-document
-.getElementById("closeHelpBtn")
-.addEventListener("click", () => {
-
-    helpModal.style.display = "none";
-
-});
-
-// -----------------------
-// 戦闘開始
-// -----------------------
-
-document
-.getElementById("cpuBattleBtn")
-.addEventListener("click", () => {
-
-    showScreen("battleScreen");
-
-});
-
-// -----------------------
-// リザルト→ホーム
-// -----------------------
-
-document
-.getElementById("returnHomeBtn")
-.addEventListener("click", () => {
-
-    showScreen("homeScreen");
-
-});
-
 // =======================
-// 戦闘システム
+// Save Data
 // =======================
 
-let playerHP = 100;
-let playerMP = 30;
+let playerData = {
+
+    level:1,
+    exp:0,
+    rate:1000,
+
+    hp:100,
+    maxHP:100,
+
+    mp:30,
+    maxMP:30
+
+};
+
+function saveGame(){
+
+    localStorage.setItem(
+        "umaSave",
+        JSON.stringify(playerData)
+    );
+
+}
+
+function loadGame(){
+
+    const save =
+    localStorage.getItem("umaSave");
+
+    if(save){
+
+        playerData =
+        JSON.parse(save);
+
+    }
+
+}
+
+// =======================
+// Battle Data
+// =======================
 
 let enemyHP = 100;
 
 let playerPos = "center";
+
+let currentCpuLevel = 1;
 
 const lanes = [
     "left",
@@ -115,41 +78,204 @@ const lanes = [
     "right"
 ];
 
-// -----------------------
-// レーン選択
-// -----------------------
+// =======================
+// Loading
+// =======================
 
-document
-.querySelectorAll("[data-lane]")
-.forEach(button => {
+window.addEventListener("load",()=>{
 
-    button.addEventListener("click", () => {
+    loadGame();
 
-        playerPos =
-        button.dataset.lane;
+    updateUI();
 
-        document
-        .getElementById("playerPos")
-        .textContent =
-        laneName(playerPos);
+    setTimeout(()=>{
 
-        log(
-            "移動先を " +
-            laneName(playerPos) +
-            " に変更"
+        showScreen(
+            "titleScreen"
         );
 
-    });
+    },2000);
 
 });
 
-// -----------------------
-// 攻撃
-// -----------------------
+// =======================
+// Title
+// =======================
+
+document
+.getElementById("startBtn")
+.addEventListener("click",()=>{
+
+    showScreen(
+        "homeScreen"
+    );
+
+});
+
+document
+.getElementById("backBtn")
+.addEventListener("click",()=>{
+
+    showScreen(
+        "titleScreen"
+    );
+
+});
+
+// =======================
+// Help
+// =======================
+
+const helpModal =
+document.getElementById(
+    "helpModal"
+);
+
+document
+.getElementById("helpBtn")
+.addEventListener("click",()=>{
+
+    helpModal.style.display =
+    "flex";
+
+});
+
+document
+.getElementById(
+    "closeHelpBtn"
+)
+.addEventListener("click",()=>{
+
+    helpModal.style.display =
+    "none";
+
+});
+
+// =======================
+// CPU Select
+// =======================
+
+document
+.getElementById(
+    "cpuBattleBtn"
+)
+.addEventListener("click",()=>{
+
+    showScreen(
+        "cpuSelectScreen"
+    );
+
+});
+
+document
+.getElementById(
+    "cpuBackBtn"
+)
+.addEventListener("click",()=>{
+
+    showScreen(
+        "homeScreen"
+    );
+
+});
+
+document
+.querySelectorAll(".cpuBtn")
+.forEach(button=>{
+
+    button.addEventListener(
+        "click",
+        ()=>{
+
+            currentCpuLevel =
+            Number(
+                button.dataset.level
+            );
+
+            startBattle();
+
+        }
+    );
+
+});
+
+// =======================
+// Start Battle
+// =======================
+
+function startBattle(){
+
+    enemyHP =
+    100 +
+    (
+        currentCpuLevel * 20
+    );
+
+    playerData.hp =
+    playerData.maxHP;
+
+    playerData.mp =
+    playerData.maxMP;
+
+    playerPos =
+    "center";
+
+    document
+    .getElementById("battleLog")
+    .innerHTML =
+    "Battle Start<br>";
+
+    updateUI();
+
+    showScreen(
+        "battleScreen"
+    );
+
+}
+
+// =======================
+// Lane Buttons
+// =======================
+
+document
+.querySelectorAll(
+    "[data-lane]"
+)
+.forEach(button=>{
+
+    button.addEventListener(
+        "click",
+        ()=>{
+
+            playerPos =
+            button.dataset.lane;
+
+            document
+            .getElementById(
+                "playerPos"
+            )
+            .textContent =
+            laneName(playerPos);
+
+            log(
+                "移動先を変更"
+            );
+
+        }
+    );
+
+});
+
+// =======================
+// Attack
+// =======================
 
 document
 .getElementById("attackBtn")
-.addEventListener("click", attack);
+.addEventListener(
+    "click",
+    attack
+);
 
 function attack(){
 
@@ -157,7 +283,9 @@ function attack(){
     randomLane();
 
     document
-    .getElementById("enemyPos")
+    .getElementById(
+        "enemyPos"
+    )
     .textContent =
     laneName(enemyPos);
 
@@ -172,12 +300,14 @@ function attack(){
     }else{
 
         log(
-            "攻撃を外した"
+            "攻撃失敗"
         );
 
     }
 
     enemyTurn();
+
+    mpRegen();
 
     updateUI();
 
@@ -185,13 +315,16 @@ function attack(){
 
 }
 
-// -----------------------
-// 移動
-// -----------------------
+// =======================
+// Move
+// =======================
 
 document
 .getElementById("moveBtn")
-.addEventListener("click", move);
+.addEventListener(
+    "click",
+    move
+);
 
 function move(){
 
@@ -199,7 +332,9 @@ function move(){
     randomLane();
 
     document
-    .getElementById("playerPos")
+    .getElementById(
+        "playerPos"
+    )
     .textContent =
     laneName(playerPos);
 
@@ -209,111 +344,295 @@ function move(){
 
     enemyTurn();
 
+    mpRegen();
+
     updateUI();
 
     checkWinner();
 
 }
 
-// -----------------------
-// CPU
-// -----------------------
+// =======================
+// MP Regen
+// =======================
+
+function mpRegen(){
+
+    const regen =
+    5 +
+    Math.floor(
+        playerData.level / 50
+    );
+
+    playerData.mp =
+    Math.min(
+        playerData.maxMP,
+        playerData.mp + regen
+    );
+
+}
+
+// =======================
+// Enemy Turn
+// =======================
 
 function enemyTurn(){
 
     const attackPos =
     randomLane();
 
-    if(attackPos === playerPos){
+    if(
+        attackPos === playerPos
+    ){
 
-        playerHP -= 15;
+        playerData.hp -=
+        10 +
+        currentCpuLevel * 2;
 
         log(
-            "敵の攻撃命中！15ダメージ"
+            "敵の攻撃命中"
         );
 
     }else{
 
         log(
-            "敵の攻撃は外れた"
+            "敵の攻撃失敗"
         );
 
     }
 
 }
 
-// -----------------------
-// UI
-// -----------------------
+// =======================
+// EXP
+// =======================
 
-function updateUI(){
+function giveRewards(){
+
+    let exp =
+
+        randomInt(10,30)
+
+        +
+
+        randomInt(100,120);
+
+    playerData.exp += exp;
 
     document
-    .getElementById("playerHP")
+    .getElementById(
+        "rewardArea"
+    )
     .textContent =
-    playerHP;
+    "EXP +" + exp;
 
-    document
-    .getElementById("playerMP")
-    .textContent =
-    playerMP;
+    levelCheck();
 
-    document
-    .getElementById("enemyHP")
-    .textContent =
-    enemyHP;
+    saveGame();
 
 }
 
-// -----------------------
-// 勝敗
-// -----------------------
+function levelCheck(){
+
+    let need =
+    playerData.level * 100;
+
+    while(
+        playerData.exp >= need
+    ){
+
+        playerData.exp -= need;
+
+        playerData.level++;
+
+        playerData.maxHP += 5;
+
+        playerData.maxMP += 2;
+
+        log(
+            "Level Up!"
+        );
+
+        need =
+        playerData.level * 100;
+
+    }
+
+}
+
+// =======================
+// Winner
+// =======================
 
 function checkWinner(){
 
     if(enemyHP <= 0){
 
+        giveRewards();
+
         document
-        .getElementById("resultText")
+        .getElementById(
+            "resultText"
+        )
         .textContent =
         "Victory";
 
-        showScreen("resultScreen");
+        showScreen(
+            "resultScreen"
+        );
+
+        updateUI();
 
     }
 
-    if(playerHP <= 0){
+    if(playerData.hp <= 0){
 
         document
-        .getElementById("resultText")
+        .getElementById(
+            "resultText"
+        )
         .textContent =
         "Defeat";
 
-        showScreen("resultScreen");
+        showScreen(
+            "resultScreen"
+        );
 
     }
 
 }
 
-// -----------------------
-// ログ
-// -----------------------
+// =======================
+// Result
+// =======================
+
+document
+.getElementById(
+    "returnHomeBtn"
+)
+.addEventListener(
+    "click",
+    ()=>{
+
+        saveGame();
+
+        updateUI();
+
+        showScreen(
+            "homeScreen"
+        );
+
+    }
+);
+
+// =======================
+// UI
+// =======================
+
+function updateUI(){
+
+    document
+    .getElementById(
+        "playerHP"
+    )
+    .textContent =
+    playerData.hp;
+
+    document
+    .getElementById(
+        "playerMP"
+    )
+    .textContent =
+    playerData.mp;
+
+    document
+    .getElementById(
+        "playerMaxHP"
+    )
+    .textContent =
+    playerData.maxHP;
+
+    document
+    .getElementById(
+        "playerMaxMP"
+    )
+    .textContent =
+    playerData.maxMP;
+
+    document
+    .getElementById(
+        "enemyHP"
+    )
+    .textContent =
+    enemyHP;
+
+    document
+    .getElementById(
+        "playerLevel"
+    )
+    .textContent =
+    playerData.level;
+
+    document
+    .getElementById(
+        "playerEXP"
+    )
+    .textContent =
+    playerData.exp;
+
+    document
+    .getElementById(
+        "playerRate"
+    )
+    .textContent =
+    playerData.rate;
+
+    document
+    .getElementById(
+        "playerHPFill"
+    )
+    .style.width =
+    (
+        playerData.hp /
+        playerData.maxHP
+    ) * 100 + "%";
+
+    document
+    .getElementById(
+        "playerMPFill"
+    )
+    .style.width =
+    (
+        playerData.mp /
+        playerData.maxMP
+    ) * 100 + "%";
+
+}
+
+// =======================
+// Log
+// =======================
 
 function log(text){
 
     document
-    .getElementById("battleLog")
+    .getElementById(
+        "battleLog"
+    )
     .innerHTML =
-    text + "<br>" +
+    text +
+    "<br>" +
     document
-    .getElementById("battleLog")
+    .getElementById(
+        "battleLog"
+    )
     .innerHTML;
 
 }
 
-// -----------------------
-// 補助
-// -----------------------
+// =======================
+// Utility
+// =======================
 
 function randomLane(){
 
@@ -326,11 +645,31 @@ function randomLane(){
 
 }
 
+function randomInt(
+    min,
+    max
+){
+
+    return Math.floor(
+        Math.random() *
+        (max - min + 1)
+    ) + min;
+
+}
+
 function laneName(lane){
 
-    if(lane === "left") return "左";
-    if(lane === "center") return "中央";
-    if(lane === "right") return "右";
+    if(lane==="left"){
+        return "左";
+    }
+
+    if(lane==="center"){
+        return "中央";
+    }
+
+    if(lane==="right"){
+        return "右";
+    }
 
     return "?";
 
