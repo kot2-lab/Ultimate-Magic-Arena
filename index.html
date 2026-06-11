@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Ultimate Magic Arena</title>
 
 <link rel="stylesheet" href="style.css">
+
 </head>
 <body>
 
-<!-- =========================
-     LOADING
-========================= -->
+<!-- ======================
+     Loading
+====================== -->
 
 <section id="loadingScreen" class="screen active">
 
@@ -26,15 +28,19 @@
 
 </section>
 
-<!-- =========================
-     TITLE
-========================= -->
+<!-- ======================
+     Title
+====================== -->
 
 <section id="titleScreen" class="screen">
 
     <div class="magicCircle"></div>
 
     <h1>Ultimate Magic Arena</h1>
+
+    <p class="subtitle">
+        Create Your Own Magic
+    </p>
 
     <div class="menuContainer">
 
@@ -54,9 +60,9 @@
 
 </section>
 
-<!-- =========================
-     HOME
-========================= -->
+<!-- ======================
+     Home
+====================== -->
 
 <section id="homeScreen" class="screen">
 
@@ -65,7 +71,7 @@
         <h2>PLAYER DATA</h2>
 
         <p>
-            Level :
+            Lv :
             <span id="playerLevel">1</span>
         </p>
 
@@ -116,9 +122,9 @@
 
 </section>
 
-<!-- =========================
-     CPU SELECT
-========================= -->
+<!-- ======================
+     CPU Select
+====================== -->
 
 <section id="cpuSelectScreen" class="screen">
 
@@ -126,45 +132,17 @@
 
     <div id="cpuList">
 
-        <button class="cpuBtn" data-level="1">
-            CPU Lv1
-        </button>
+        <button class="cpuBtn" data-level="1">CPU Lv1</button>
+        <button class="cpuBtn" data-level="2">CPU Lv2</button>
+        <button class="cpuBtn" data-level="3">CPU Lv3</button>
 
-        <button class="cpuBtn" data-level="2">
-            CPU Lv2
-        </button>
-
-        <button class="cpuBtn" data-level="3">
-            CPU Lv3
-        </button>
-
-        <button disabled>
-            CPU Lv4
-        </button>
-
-        <button disabled>
-            CPU Lv5
-        </button>
-
-        <button disabled>
-            CPU Lv6
-        </button>
-
-        <button disabled>
-            CPU Lv7
-        </button>
-
-        <button disabled>
-            CPU Lv8
-        </button>
-
-        <button disabled>
-            CPU Lv9
-        </button>
-
-        <button disabled>
-            CPU Lv10
-        </button>
+        <button disabled>CPU Lv4</button>
+        <button disabled>CPU Lv5</button>
+        <button disabled>CPU Lv6</button>
+        <button disabled>CPU Lv7</button>
+        <button disabled>CPU Lv8</button>
+        <button disabled>CPU Lv9</button>
+        <button disabled>CPU Lv10</button>
 
     </div>
 
@@ -174,15 +152,26 @@
 
 </section>
 
-<!-- =========================
-     BATTLE
-========================= -->
+<!-- ======================
+     Battle
+====================== -->
 
 <section id="battleScreen" class="screen">
 
     <h2>BATTLE</h2>
 
+    <!-- エフェクト表示 -->
+    <div id="effectLayer"></div>
+
+    <!-- 敵 -->
+
     <div id="enemy">
+
+        <img
+            id="enemyImage"
+            class="characterImage"
+            src="assets/images/enemy.png"
+            alt="enemy">
 
         <h3>Enemy</h3>
 
@@ -197,6 +186,8 @@
         </p>
 
     </div>
+
+    <!-- レーン -->
 
     <div id="battlefield">
 
@@ -214,17 +205,34 @@
 
     </div>
 
+    <!-- プレイヤー -->
+
     <div id="player">
 
+        <img
+            id="playerImage"
+            class="characterImage"
+            src="assets/images/player.png"
+            alt="player">
+
         <h3>Player</h3>
+
+        <!-- HP -->
 
         <div class="stat">
 
             <div>
+
                 HP
+
                 <span id="playerHP">100</span>
+
                 /
-                <span id="playerMaxHP">100</span>
+
+                <span id="playerMaxHP">
+                    100
+                </span>
+
             </div>
 
             <div class="bar">
@@ -238,13 +246,22 @@
 
         </div>
 
+        <!-- MP -->
+
         <div class="stat">
 
             <div>
+
                 MP
+
                 <span id="playerMP">30</span>
+
                 /
-                <span id="playerMaxMP">30</span>
+
+                <span id="playerMaxMP">
+                    30
+                </span>
+
             </div>
 
             <div class="bar">
@@ -265,15 +282,25 @@
             </span>
         </p>
 
-        <button id="attackBtn">
-            Attack
-        </button>
+        <div class="battleButtons">
 
-        <button id="moveBtn">
-            Move
-        </button>
+            <button id="attackBtn">
+                Attack
+            </button>
+
+            <button id="moveBtn">
+                Move
+            </button>
+
+        </div>
 
     </div>
+
+    <!-- ダメージ表示 -->
+
+    <div id="damagePopup"></div>
+
+    <!-- ログ -->
 
     <div id="battleLog">
 
@@ -283,9 +310,9 @@
 
 </section>
 
-<!-- =========================
-     RESULT
-========================= -->
+<!-- ======================
+     Result
+====================== -->
 
 <section id="resultScreen" class="screen">
 
@@ -309,9 +336,9 @@
 
 </section>
 
-<!-- =========================
-     HELP
-========================= -->
+<!-- ======================
+     Help
+====================== -->
 
 <div id="helpModal">
 
@@ -319,22 +346,10 @@
 
         <h2>HELP</h2>
 
-        <p>
-            3レーン制バトル
-        </p>
-
-        <p>
-            レベル上限999
-        </p>
-
-        <p>
-            MPは毎ターン回復
-        </p>
-
-        <p>
-            魔法作成システムは
-            Ver0.3予定
-        </p>
+        <p>3レーン制バトル</p>
+        <p>レベル上限999</p>
+        <p>MPは毎ターン回復</p>
+        <p>魔法作成システム実装予定</p>
 
         <button id="closeHelpBtn">
 
