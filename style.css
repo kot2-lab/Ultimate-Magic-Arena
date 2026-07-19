@@ -147,24 +147,45 @@ margin-bottom:30px;
 
 }
 
+
+/* =====================
+   Title Screen
+===================== */
+
+#titleScreen{
+
+    position: relative;
+
+}
+
+#titleScreen h1,
+#titleScreen .subtitle,
+#titleScreen .menuContainer{
+
+    position: relative;
+    z-index: 1;
+
+}
+
 /* =====================
    Magic Circle
 ===================== */
 
 .magicCircle{
 
-position:absolute;
+    position:absolute;
 
-width:450px;
-height:450px;
+    width:450px;
+    height:450px;
 
-border:
-3px solid rgba(212,175,55,.2);
+    border:3px solid rgba(212,175,55,.2);
 
-border-radius:50%;
+    border-radius:50%;
 
-animation:
-rotateCircle 25s linear infinite;
+    animation:rotateCircle 25s linear infinite;
+
+    pointer-events:none;   /* ←追加 */
+    z-index:0;             /* ←追加 */
 
 }
 
