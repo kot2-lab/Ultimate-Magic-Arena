@@ -33,3 +33,13 @@
 
 ### Documentation
 - 追加仕様を`Specification_Updates.md`と完全版`MASTER_GUIDE_v1.1.md`に記録
+
+## Ver.1.1.1
+
+### Changed
+- 魔法書庫の登録上限を10個から20個へ拡張
+- ホーム、魔法書庫、チュートリアルの登録上限表示を20個に統一
+- Ver.1.1.0以前のセーブデータと既存魔法をそのまま引き継ぎ可能
+
+### Documentation
+- 完全版ガイドを`MASTER_GUIDE_v1.1.1.md`として作成し、追加仕様を記録

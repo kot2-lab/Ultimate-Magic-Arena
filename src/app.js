@@ -1,4 +1,4 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, requiredExp, synergyFor } from "./data.js";
+import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, requiredExp, synergyFor } from "./data.js";
 import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js";
 import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js";
 import { Soundscape } from "./audio.js";
@@ -24,7 +24,7 @@ let tutorialIndex = 0;
 const tutorialSteps = [
   { view: "homeScreen", title: "ここが冒険の拠点", body: "ホームから対戦、魔法工房、魔法書庫へ進めます。まずは自分の魔法を整えてから、闘技場へ向かいましょう。" },
   { view: "magicScreen", title: "魔法工房で術を編む", body: "属性・形状・特殊効果・威力を組み合わせて魔法を作ります。威力を上げるとMP消費も増えるので、プレビューを見ながら調整しましょう。" },
-  { view: "libraryScreen", title: "魔法書庫で準備する", body: "作った魔法は書庫に保存され、対戦で使えます。既存の魔法も編集できます。登録できる魔法は最大10個です。" },
+  { view: "libraryScreen", title: "魔法書庫で準備する", body: `作った魔法は書庫に保存され、対戦で使えます。既存の魔法も編集できます。登録できる魔法は最大${MAX_SPELLS}個です。` },
   { view: "cpuSelectScreen", title: "相手を選んで闘技場へ", body: "CPUは10段階。最初は初心者向けから試すのがおすすめです。勝敗に応じて経験値を獲得し、勝つとレーティングも上がります。" },
   { view: "helpScreen", title: "レーンを読んで行動する", body: "戦闘は左翼・中央・右翼の3レーン制です。狙うレーンを選び、魔法を使うか移動・パスを選択します。1ターン15秒、行動は1回です。" },
   { view: "settingsScreen", title: "冒険の記録は自動保存", body: "進行状況はこのブラウザーに自動保存されます。次回はタイトル画面の「冒険をつづける」から再開できます。別の端末への同期には対応していません。" },
@@ -103,6 +103,7 @@ function renderHome() {
   $("#homeWins").textContent = player.wins;
   $("#homeLosses").textContent = player.losses;
   $("#homeSpellCount").textContent = player.spells.length;
+  $("#homeSpellLimit").textContent = String(MAX_SPELLS);
   $("#headerPlayerName").textContent = player.name;
   $("#headerLevel").textContent = player.level;
   $("#headerRank").textContent = rankFor(player.rate);
@@ -210,6 +211,7 @@ function editSpell(spell) {
 
 function renderLibrary() {
   $("#libraryCount").textContent = String(player.spells.length);
+  $("#librarySpellLimit").textContent = String(MAX_SPELLS);
   const library = $("#spellLibrary");
   library.replaceChildren();
   if (!player.spells.length) {
@@ -499,7 +501,7 @@ function saveDraft(event) {
   const draft = currentDraft();
   if (!draft.name || draft.name.length > 24) { toast("魔法名を1〜24文字で入力してください。", true); return; }
   const existingIndex = player.spells.findIndex((spell) => spell.id === editingSpellId);
-  if (existingIndex < 0 && player.spells.length >= 10) { toast("魔法書庫は10個までです。既存の魔法を整理してください。", true); return; }
+  if (existingIndex < 0 && player.spells.length >= MAX_SPELLS) { toast(`魔法書庫は${MAX_SPELLS}個までです。既存の魔法を整理してください。`, true); return; }
   const spell = { ...draft, id: editingSpellId || `spell-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, cost: costForSpell(draft) };
   if (existingIndex >= 0) player.spells[existingIndex] = spell;
   else player.spells.push(spell);

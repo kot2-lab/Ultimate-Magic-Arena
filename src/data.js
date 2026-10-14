@@ -1,4 +1,5 @@
-export const VERSION = "1.1.0";
+export const VERSION = "1.1.1";
+export const MAX_SPELLS = 20;
 export const SAVE_KEY = "umaSave";
 export const SETTINGS_KEY = "umaSettings";
 export const LANES = ["left", "center", "right"];

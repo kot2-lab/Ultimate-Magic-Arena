@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ATTRIBUTES, SHAPES, SPECIALS, costForSpell, defaultSpells, freshPlayer, migratePlayer, requiredExp, synergyFor } from "../src/data.js";
+import { ATTRIBUTES, MAX_SPELLS, SHAPES, SPECIALS, costForSpell, defaultSpells, freshPlayer, migratePlayer, requiredExp, synergyFor } from "../src/data.js";
 import { awardExperience, castSpell, createBattle, moveUnit, resolvePlayerAction } from "../src/battle.js";
 import { backupProgress, loadProgress, saveProgress } from "../src/storage.js";
 
@@ -10,6 +10,12 @@ test("the published magic catalog has the specified counts", () => {
   assert.equal(ATTRIBUTES.length, 12);
   assert.equal(SHAPES.length, 15);
   assert.equal(SPECIALS.length, 15);
+});
+
+test("the magic archive supports twenty registered spells", () => {
+  assert.equal(MAX_SPELLS, 20);
+  const existingSave = migratePlayer({ ...freshPlayer(), spells: Array.from({ length: 15 }, (_, index) => ({ id: `saved-${index}` })) });
+  assert.equal(existingSave.spells.length, 15);
 });
 
 test("spell costs and paired attribute synergy stay within builder constraints", () => {
