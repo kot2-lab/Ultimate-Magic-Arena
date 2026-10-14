@@ -11,6 +11,7 @@
 - ファンタジーRPGの世界観に合わせたPC・タブレット・スマートフォン対応UIを追加
 - BGM・効果音、動きの設定、セーブデータ書き出しを追加
 - 追加決定事項を`Specification_Updates.md`と完全版`MASTER_GUIDE_v1.0.md`に記録
+- GitHub Pages向けの自動公開ワークフローを追加（公開設定完了後に有効）
 
 ### Fixed
 - STARTボタンを装飾要素が遮らないVer.0.3.1の修正を維持
