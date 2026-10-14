@@ -1,12 +1,15 @@
 import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, requiredExp, synergyFor } from "./data.js";
 import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js";
-import { loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js";
+import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js";
 import { Soundscape } from "./audio.js";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const sound = new Soundscape();
-const { player, recovered } = loadProgress();
+const initialProgress = loadProgress();
+let player = initialProgress.player;
+const recovered = initialProgress.recovered;
+let hasSavedProgress = initialProgress.hasSave;
 const settings = loadSettings();
 let battle = null;
 let battleTimer = null;
@@ -14,6 +17,18 @@ let selectedAttributes = ["fire"];
 let selectedShape = "bullet";
 let selectedTargetLane = "center";
 let editingSpellId = null;
+let nameDialogMode = "rename";
+let savedBeforeNewJourney = null;
+let tutorialIndex = 0;
+
+const tutorialSteps = [
+  { view: "homeScreen", title: "ここが冒険の拠点", body: "ホームから対戦、魔法工房、魔法書庫へ進めます。まずは自分の魔法を整えてから、闘技場へ向かいましょう。" },
+  { view: "magicScreen", title: "魔法工房で術を編む", body: "属性・形状・特殊効果・威力を組み合わせて魔法を作ります。威力を上げるとMP消費も増えるので、プレビューを見ながら調整しましょう。" },
+  { view: "libraryScreen", title: "魔法書庫で準備する", body: "作った魔法は書庫に保存され、対戦で使えます。既存の魔法も編集できます。登録できる魔法は最大10個です。" },
+  { view: "cpuSelectScreen", title: "相手を選んで闘技場へ", body: "CPUは10段階。最初は初心者向けから試すのがおすすめです。勝敗に応じて経験値を獲得し、勝つとレーティングも上がります。" },
+  { view: "helpScreen", title: "レーンを読んで行動する", body: "戦闘は左翼・中央・右翼の3レーン制です。狙うレーンを選び、魔法を使うか移動・パスを選択します。1ターン15秒、行動は1回です。" },
+  { view: "settingsScreen", title: "冒険の記録は自動保存", body: "進行状況はこのブラウザーに自動保存されます。次回はタイトル画面の「冒険をつづける」から再開できます。別の端末への同期には対応していません。" },
+];
 
 function rankFor(rating) {
   if (rating >= 1800) return "S";
@@ -26,8 +41,22 @@ function rankFor(rating) {
 }
 
 function save() {
-  try { saveProgress(player); }
-  catch { toast("保存できませんでした。ブラウザーの保存領域を確認してください。", true); }
+  try {
+    saveProgress(player);
+    hasSavedProgress = true;
+    renderTitleActions();
+    return true;
+  } catch {
+    toast("保存できませんでした。ブラウザーの保存領域を確認してください。", true);
+    return false;
+  }
+}
+
+function renderTitleActions() {
+  const button = $("#continueBtn");
+  if (!button) return;
+  button.disabled = !hasSavedProgress;
+  $("#continueCaption").textContent = hasSavedProgress ? "このブラウザーの冒険を読み込む" : "セーブデータがありません";
 }
 
 function toast(message, error = false) {
@@ -390,6 +419,81 @@ function confirm(message, title = "確認") {
   });
 }
 
+function renderTutorialStep() {
+  const step = tutorialSteps[tutorialIndex];
+  showView(step.view);
+  $("#tutorialCounter").textContent = `FIELD GUIDE · ${String(tutorialIndex + 1).padStart(2, "0")} / ${String(tutorialSteps.length).padStart(2, "0")}`;
+  $("#tutorialTitle").textContent = step.title;
+  $("#tutorialBody").textContent = step.body;
+  $("#tutorialProgress").style.width = `${((tutorialIndex + 1) / tutorialSteps.length) * 100}%`;
+  $("#tutorialBackBtn").disabled = tutorialIndex === 0;
+  $("#tutorialNextBtn").querySelector("span").textContent = tutorialIndex === tutorialSteps.length - 1 ? "冒険を始める" : "次へ";
+  if (!$("#tutorialDialog").open) $("#tutorialDialog").showModal();
+}
+
+function startTutorial() {
+  tutorialIndex = 0;
+  renderTutorialStep();
+}
+
+function finishTutorial() {
+  player.tutorialCompleted = true;
+  save();
+  if ($("#tutorialDialog").open) $("#tutorialDialog").close("complete");
+  showView("homeScreen");
+}
+
+function openNameDialog(mode) {
+  nameDialogMode = mode;
+  $("#nameDialogTitle").textContent = mode === "onboarding" ? "魔法使いの名前を決めよう" : "新しい名前";
+  $("#nameDialogLabel").textContent = mode === "onboarding" ? "闘技場で呼ばれる名前（あとから変更できます）" : "闘技場で呼ばれる名前";
+  $("#nameSubmitLabel").textContent = mode === "onboarding" ? "この名前で進む" : "名前を刻む";
+  $("#playerNameInput").value = mode === "onboarding" ? "" : player.name;
+  $("#nameCancelButton").textContent = mode === "onboarding" ? "タイトルへ戻る" : "戻る";
+  $("#nameDialog").showModal();
+  $("#playerNameInput").focus();
+}
+
+async function beginNewJourney() {
+  sound.unlock();
+  sound.effect("select");
+  savedBeforeNewJourney = null;
+  if (hasSavedProgress) {
+    const accepted = await confirm("現在の冒険をJSONファイルとブラウザー内バックアップに保存してから、新しい冒険を始めます。続けますか？", "新しい冒険を始める");
+    if (!accepted) return;
+    try {
+      if (!backupProgress()) throw new Error("save not found");
+      downloadSave();
+      savedBeforeNewJourney = JSON.parse(JSON.stringify(player));
+    } catch {
+      toast("現在の冒険をバックアップできなかったため、新しい冒険は開始しませんでした。", true);
+      return;
+    }
+    player = freshPlayer();
+  } else {
+    const accepted = await confirm("新しい冒険を始めます。ユーザー名を決めて、チュートリアルへ進みますか？", "冒険を始める");
+    if (!accepted) return;
+  }
+  openNameDialog("onboarding");
+}
+
+function continueJourney() {
+  sound.unlock();
+  sound.effect("select");
+  const latest = loadProgress();
+  if (!latest.hasSave) {
+    hasSavedProgress = false;
+    renderTitleActions();
+    toast("このブラウザーに続きの冒険がありません。", true);
+    return;
+  }
+  player = latest.player;
+  hasSavedProgress = true;
+  renderTitleActions();
+  if (!player.tutorialCompleted) startTutorial();
+  else showView("homeScreen");
+}
+
 function saveDraft(event) {
   event.preventDefault();
   const draft = currentDraft();
@@ -417,8 +521,13 @@ function downloadSave() {
 
 function setName(value) {
   const name = value.trim().slice(0, 18);
-  if (!name) { toast("名前を入力してください。", true); return; }
-  player.name = name; save(); renderHome(); renderProfile(); toast(`「${name}」で登録しました。`);
+  if (!name) { toast("名前を入力してください。", true); return false; }
+  player.name = name;
+  renderHome();
+  renderProfile();
+  if (!save()) return false;
+  toast(`「${name}」で登録しました。`);
+  return true;
 }
 
 function setVolume() { sound.setVolumes(settings.bgm, settings.sfx); saveSettings(settings); }
@@ -429,8 +538,16 @@ function bindEvents() {
     if (opener) { event.preventDefault(); showView(opener.dataset.open); sound.effect("select"); }
   });
 
-  $("#startBtn").addEventListener("click", () => { sound.unlock(); sound.effect("select"); showView("homeScreen"); });
-  $("#continueBtn").addEventListener("click", () => { sound.unlock(); sound.effect("select"); showView("homeScreen"); });
+  $("#startBtn").addEventListener("click", beginNewJourney);
+  $("#continueBtn").addEventListener("click", continueJourney);
+  $("#tutorialNextBtn").addEventListener("click", () => {
+    if (tutorialIndex === tutorialSteps.length - 1) finishTutorial();
+    else { tutorialIndex += 1; renderTutorialStep(); }
+  });
+  $("#tutorialBackBtn").addEventListener("click", () => { if (tutorialIndex > 0) { tutorialIndex -= 1; renderTutorialStep(); } });
+  $("#tutorialSkipBtn").addEventListener("click", finishTutorial);
+  $("#tutorialDialog").addEventListener("cancel", (event) => { event.preventDefault(); finishTutorial(); });
+  $("#replayTutorialBtn").addEventListener("click", startTutorial);
   $("#cpuGrid").addEventListener("click", (event) => { const button = event.target.closest("[data-cpu-level]"); if (button) startBattle(Number(button.dataset.cpuLevel)); });
   $("#magicForm").addEventListener("submit", saveDraft);
   $("#magicForm").addEventListener("input", updatePreview);
@@ -478,13 +595,27 @@ function bindEvents() {
   $("#soundToggle").addEventListener("click", () => { sound.unlock(); sound.toggle(!sound.enabled); $("#soundToggle").classList.toggle("is-muted", !sound.enabled); });
   $("#exportSaveBtn").addEventListener("click", downloadSave);
 
-  $("#renamePlayerBtn").addEventListener("click", () => { $("#playerNameInput").value = player.name; $("#nameDialog").showModal(); });
+  $("#renamePlayerBtn").addEventListener("click", () => openNameDialog("rename"));
+  $("#nameCancelButton").addEventListener("click", () => $("#nameDialog").close("cancel"));
   $("#renameForm").addEventListener("submit", (event) => {
-    const submitter = event.submitter;
-    if (submitter?.value === "cancel") return;
     event.preventDefault();
-    setName($("#playerNameInput").value);
+    if (nameDialogMode === "onboarding") player.tutorialCompleted = false;
+    if (!setName($("#playerNameInput").value)) return;
     $("#nameDialog").close("confirm");
+  });
+  $("#nameDialog").addEventListener("close", () => {
+    if (nameDialogMode !== "onboarding") return;
+    const confirmed = $("#nameDialog").returnValue === "confirm";
+    nameDialogMode = "rename";
+    if (confirmed) {
+      savedBeforeNewJourney = null;
+      startTutorial();
+      return;
+    }
+    player = savedBeforeNewJourney || freshPlayer();
+    savedBeforeNewJourney = null;
+    renderTitleActions();
+    showTitle();
   });
 }
 
@@ -493,6 +624,7 @@ function initialize() {
   sound.setVolumes(settings.bgm, settings.sfx);
   document.body.classList.toggle("reduce-motion", !settings.motion);
   bindEvents();
+  renderTitleActions();
   renderHome();
   window.setTimeout(() => {
     $("#loadingScreen").classList.remove("active");

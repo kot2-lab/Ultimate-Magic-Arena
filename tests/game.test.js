@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { ATTRIBUTES, SHAPES, SPECIALS, costForSpell, defaultSpells, freshPlayer, migratePlayer, requiredExp, synergyFor } from "../src/data.js";
 import { awardExperience, castSpell, createBattle, moveUnit, resolvePlayerAction } from "../src/battle.js";
-import { loadProgress, saveProgress } from "../src/storage.js";
+import { backupProgress, loadProgress, saveProgress } from "../src/storage.js";
 
 const silentRandom = () => 0.99;
 
@@ -23,16 +23,23 @@ test("save migration preserves zero MP and clamps invalid values", () => {
   assert.equal(player.mp, 0);
   assert.equal(player.exp, 0);
   assert.equal(player.level, 999);
+  assert.equal(player.tutorialCompleted, false);
+  assert.equal(migratePlayer({ name: "既存プレイヤー" }).tutorialCompleted, true);
 });
 
 test("local save round-trips through storage and corrupt data is recoverable", () => {
   const values = new Map();
   const storage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+  assert.equal(loadProgress(storage).hasSave, false);
   const player = freshPlayer(); player.mp = 0;
   saveProgress(player, storage);
   assert.equal(loadProgress(storage).player.mp, 0);
+  assert.equal(loadProgress(storage).hasSave, true);
+  assert.equal(backupProgress(storage), true);
+  assert.equal(values.get("umaSave.backup"), values.get("umaSave"));
   values.set("umaSave", "{");
   assert.equal(loadProgress(storage).recovered, true);
+  assert.equal(loadProgress(storage).hasSave, false);
   assert.equal(values.get("umaSave.backup"), "{");
 });
 

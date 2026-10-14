@@ -6,13 +6,20 @@ function safeParse(raw) {
 
 export function loadProgress(storage = window.localStorage) {
   const raw = storage.getItem(SAVE_KEY);
-  if (!raw) return { player: freshPlayer(), recovered: false };
+  if (!raw) return { player: freshPlayer(), recovered: false, hasSave: false };
   const parsed = safeParse(raw);
   if (!parsed || typeof parsed !== "object") {
     try { storage.setItem(`${SAVE_KEY}.backup`, raw); } catch { /* Keep the game playable if backup storage is unavailable. */ }
-    return { player: freshPlayer(), recovered: true };
+    return { player: freshPlayer(), recovered: true, hasSave: false };
   }
-  return { player: migratePlayer(parsed.player ?? parsed), recovered: false };
+  return { player: migratePlayer(parsed.player ?? parsed), recovered: false, hasSave: true };
+}
+
+export function backupProgress(storage = window.localStorage) {
+  const raw = storage.getItem(SAVE_KEY);
+  if (!raw) return false;
+  storage.setItem(`${SAVE_KEY}.backup`, raw);
+  return true;
 }
 
 export function saveProgress(player, storage = window.localStorage) {

@@ -1,4 +1,4 @@
-export const VERSION = "1.0.0";
+export const VERSION = "1.1.0";
 export const SAVE_KEY = "umaSave";
 export const SETTINGS_KEY = "umaSettings";
 export const LANES = ["left", "center", "right"];
@@ -118,7 +118,7 @@ export function freshPlayer() {
     name: "新人魔法使い", level: 1, exp: 0, rate: 1000,
     hp: 100, maxHP: 100, mp: 30, maxMP: 70, mpRegen: 5,
     wins: 0, losses: 0, battles: 0, lastBattle: null,
-    spells: defaultSpells(),
+    spells: defaultSpells(), tutorialCompleted: false,
   };
 }
 
@@ -129,7 +129,12 @@ export function freshSettings() {
 export function migratePlayer(saved) {
   const base = freshPlayer();
   if (!saved || typeof saved !== "object") return base;
-  const player = { ...base, ...saved };
+  const player = {
+    ...base,
+    ...saved,
+    // Existing Ver.1.0 saves should continue without being interrupted by onboarding.
+    tutorialCompleted: typeof saved.tutorialCompleted === "boolean" ? saved.tutorialCompleted : true,
+  };
   const finite = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   player.level = Math.min(999, Math.max(1, finite(player.level, 1)));
   player.exp = Math.max(0, finite(player.exp, 0));
