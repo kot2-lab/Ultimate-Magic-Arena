@@ -1,7 +1,7 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, requiredExp, synergyFor } from "./data.js?v=1.4.4";
-import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.4.4";
-import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.4.4";
-import { Soundscape } from "./audio.js?v=1.4.4";
+import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, freshSettings, migratePlayer, requiredExp, synergyFor } from "./data.js?v=1.4.5";
+import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.4.5";
+import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.4.5";
+import { Soundscape } from "./audio.js?v=1.4.5";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -757,8 +757,59 @@ function downloadSave() {
   const url = URL.createObjectURL(new Blob([payload], { type: "application/json" }));
   const link = document.createElement("a");
   link.href = url; link.download = `uma-save-${new Date().toISOString().slice(0,10)}.json`;
-  document.body.append(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+  document.body.append(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   toast("保存データを書き出しました。");
+}
+
+async function restoreSave(file) {
+  if (battle) {
+    toast("対戦中は復元できません。試合を終えてから設定画面を開いてください。", true);
+    return;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(await file.text());
+    if (!parsed || typeof parsed !== "object" || !parsed.player || typeof parsed.player !== "object" || Array.isArray(parsed.player)) throw new Error("invalid save");
+    if (typeof parsed.player.name !== "string" || !parsed.player.name.trim() || !Array.isArray(parsed.player.spells)) throw new Error("invalid player");
+    if (parsed.settings !== undefined && (!parsed.settings || typeof parsed.settings !== "object" || Array.isArray(parsed.settings))) throw new Error("invalid settings");
+  } catch {
+    toast("このファイルはUMAの保存データとして読み込めません。", true);
+    return;
+  }
+
+  const accepted = await confirm(`「${parsed.player.name}」の冒険を読み込みます。現在の冒険はJSONファイルとブラウザー内バックアップに保全します。続けますか？`, "保存データを復元");
+  if (!accepted) return;
+
+  const restoredPlayer = migratePlayer(parsed.player);
+  const restoredSettings = { ...freshSettings(), ...(parsed.settings || {}) };
+  restoredSettings.bgm = Math.max(0, Math.min(1, Number(restoredSettings.bgm) || 0));
+  restoredSettings.sfx = Math.max(0, Math.min(1, Number(restoredSettings.sfx) || 0));
+  restoredSettings.motion = restoredSettings.motion !== false;
+  const previousPlayer = player;
+  const previousSettings = { ...settings };
+  try {
+    if (hasSavedProgress) {
+      saveProgress(player);
+      if (!backupProgress()) throw new Error("backup failed");
+      downloadSave();
+    }
+    saveProgress(restoredPlayer);
+    saveSettings(restoredSettings);
+  } catch {
+    try { saveProgress(previousPlayer); saveSettings(previousSettings); } catch { /* Keep the in-memory adventure available. */ }
+    toast("復元できませんでした。現在の冒険を保持しています。保存領域を確認してください。", true);
+    return;
+  }
+  player = restoredPlayer;
+  Object.assign(settings, restoredSettings);
+  hasSavedProgress = true;
+  sound.setVolumes(settings.bgm, settings.sfx);
+  document.body.classList.toggle("reduce-motion", !settings.motion);
+  renderTitleActions();
+  renderHome();
+  renderSettings();
+  showView("homeScreen");
+  toast("冒険を復元しました。");
 }
 
 function setName(value) {
@@ -772,7 +823,7 @@ function setName(value) {
   return true;
 }
 
-function setVolume() { sound.setVolumes(settings.bgm, settings.sfx); saveSettings(settings); }
+function setVolume() { sound.setVolumes(settings.bgm, settings.sfx); }
 
 function bindEvents() {
   document.addEventListener("click", (event) => {
@@ -847,10 +898,18 @@ function bindEvents() {
   $("#returnHomeBtn").addEventListener("click", () => { battle = null; showView("homeScreen"); });
 
   $("#bgmVolume").addEventListener("input", (event) => { settings.bgm = Number(event.target.value); setVolume(); });
+  $("#bgmVolume").addEventListener("change", () => saveSettings(settings));
   $("#sfxVolume").addEventListener("input", (event) => { settings.sfx = Number(event.target.value); setVolume(); });
+  $("#sfxVolume").addEventListener("change", () => saveSettings(settings));
   $("#motionSetting").addEventListener("change", (event) => { settings.motion = event.target.checked; document.body.classList.toggle("reduce-motion", !settings.motion); saveSettings(settings); });
   $("#soundToggle").addEventListener("click", () => { sound.unlock(); sound.toggle(!sound.enabled); $("#soundToggle").classList.toggle("is-muted", !sound.enabled); });
   $("#exportSaveBtn").addEventListener("click", downloadSave);
+  $("#importSaveBtn").addEventListener("click", () => $("#importSaveInput").click());
+  $("#importSaveInput").addEventListener("change", async (event) => {
+    const [file] = event.target.files || [];
+    if (file) await restoreSave(file);
+    event.target.value = "";
+  });
 
   $("#renamePlayerBtn").addEventListener("click", () => openNameDialog("rename"));
   $("#nameCancelButton").addEventListener("click", () => $("#nameDialog").close("cancel"));
