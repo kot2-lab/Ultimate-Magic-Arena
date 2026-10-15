@@ -56,6 +56,7 @@ button:disabled { opacity: .45; cursor: not-allowed !important; transform: none 
 .title-kicker,.title-logo,.title-subtitle,.title-actions,.title-version,.title-stars { position:relative; z-index:1; }
 .title-kicker { margin-bottom: 16px; }
 .title-logo { margin:0; font:500 clamp(35px,7.5vw,66px)/.99 var(--serif); letter-spacing:.13em; text-shadow:0 7px 35px #07080b; }
+.provisional-mark { display:inline-block; color:var(--gold-dim); font:500 .24em/1 var(--serif); letter-spacing:.08em; text-shadow:none; vertical-align:middle; white-space:nowrap; }
 .title-logo span { color:var(--gold-bright); }
 .title-subtitle { margin:20px 0 27px; color:#cfcbc0; font-size:14px; letter-spacing:.3em; }
 .title-actions { display:flex; width:min(350px,100%); flex-direction:column; align-items:stretch; gap:8px; }
