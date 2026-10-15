@@ -59,6 +59,7 @@ test("lane movement validates destination and bind prevents movement", () => {
 test("a delayed spell resolves after the enemy action and charges MP only once", () => {
   const battle = createBattle(freshPlayer(), 1, silentRandom);
   battle.enemy.spells = [];
+  battle.enemy.hp = battle.enemy.maxHP = 300;
   battle.enemy.lane = "right";
   battle.player.lane = "right";
   const spell = { id: "test-delay", name: "時の矢", attributes: ["neutral"], shape: "bullet", special: "delayed", power: 100 };
@@ -77,12 +78,22 @@ test("damage spells respect barriers and low-level battle starts with a valid tu
   const battle = createBattle(freshPlayer(), 1, silentRandom);
   assert.equal(battle.secondsLeft, 15);
   assert.equal(battle.player.mp, battle.player.maxMP);
+  assert.equal(battle.enemy.maxHP, 90);
+  assert.equal(battle.enemy.mp, 25);
+  assert.equal(battle.enemy.mpRegen, 4);
   battle.enemy.lane = "center";
   battle.enemy.buffs.push({ type: "barrier", turns: 2, value: 0.45 });
   const spell = { attributes: ["neutral"], shape: "bullet", special: "critical", power: 30 };
   const before = battle.enemy.hp;
   assert.equal(castSpell(battle, "player", spell, { targetLane: "center", random: silentRandom }).ok, true);
   assert.ok(battle.enemy.hp < before);
+});
+
+test("beginner CPU tuning does not change the next difficulty", () => {
+  const battle = createBattle(freshPlayer(), 2, silentRandom);
+  assert.equal(battle.enemy.maxHP, 128);
+  assert.equal(battle.enemy.mp, 40);
+  assert.equal(battle.enemy.mpRegen, 5);
 });
 
 test("experience rewards battles and levels without exceeding the cap", () => {
