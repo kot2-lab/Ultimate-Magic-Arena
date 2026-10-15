@@ -13,6 +13,7 @@ let hasSavedProgress = initialProgress.hasSave;
 const settings = loadSettings();
 let battle = null;
 let battleTimer = null;
+let battleResultTimer = null;
 let selectedAttributes = ["fire"];
 let selectedShape = "bullet";
 let selectedTargetLane = "center";
@@ -278,6 +279,7 @@ function renderBattle() {
   $("#turnNumber").textContent = String(battle.turn);
   $("#playerLaneLabel").textContent = LANE_NAMES[battle.player.lane];
   $("#enemyLaneLabel").textContent = LANE_NAMES[battle.enemy.lane];
+  renderBattleLaneMap();
   $("#battleLog").replaceChildren(...battle.log.slice(0, 15).map((message, index) => {
     const entry = document.createElement("div"); entry.className = "battle-log-entry";
     const time = document.createElement("time"); time.textContent = `TURN ${battle.turn - Math.floor(index / 3)}`;
@@ -303,7 +305,48 @@ function renderBattle() {
   });
   $$("[data-target-lane]").forEach((button) => button.classList.toggle("selected", button.dataset.targetLane === selectedTargetLane));
   $("#passTurnBtn").disabled = battle.phase !== "player";
+  $("#retreatBtn").disabled = Boolean(battle.result);
   updateTimerDisplay();
+}
+
+function renderBattleLaneMap() {
+  let map = $("#battleLaneMap");
+  if (!map) {
+    map = document.createElement("div");
+    map.id = "battleLaneMap";
+    map.className = "battle-lane-map";
+    map.setAttribute("aria-label", "戦場のレーンと双方の位置");
+    $("#battleArena").append(map);
+  }
+  map.replaceChildren(...LANES.map((lane) => {
+    const slot = document.createElement("div");
+    slot.className = `battle-lane${selectedTargetLane === lane ? " aiming" : ""}`;
+    const label = document.createElement("span");
+    label.className = "battle-lane-name";
+    label.textContent = LANE_NAMES[lane];
+    if (selectedTargetLane === lane) {
+      const aim = document.createElement("em");
+      aim.className = "lane-aim-tag";
+      aim.textContent = "狙い";
+      label.append(" ", aim);
+    }
+    const pieces = document.createElement("span");
+    pieces.className = "battle-lane-pieces";
+    if (battle.enemy.lane === lane) {
+      const enemyPiece = document.createElement("b");
+      enemyPiece.className = "lane-piece enemy-piece";
+      enemyPiece.textContent = "敵";
+      pieces.append(enemyPiece);
+    }
+    if (battle.player.lane === lane) {
+      const playerPiece = document.createElement("b");
+      playerPiece.className = "lane-piece player-piece";
+      playerPiece.textContent = "自分";
+      pieces.append(playerPiece);
+    }
+    slot.append(label, pieces);
+    return slot;
+  }));
 }
 
 function renderUnit(side, unit) {
@@ -328,6 +371,8 @@ function renderUnit(side, unit) {
 }
 
 function startBattle(cpuLevel) {
+  if (battleResultTimer) window.clearTimeout(battleResultTimer);
+  battleResultTimer = null;
   sound.unlock();
   sound.effect("select");
   battle = createBattle(player, cpuLevel);
@@ -341,7 +386,9 @@ function startBattle(cpuLevel) {
     battle.secondsLeft -= 1;
     updateTimerDisplay();
     if (battle.secondsLeft <= 0) {
+      const before = { playerHP: battle.player.hp, enemyHP: battle.enemy.hp, playerLane: battle.player.lane, enemyLane: battle.enemy.lane, log: [...battle.log] };
       expirePlayerTurn(battle);
+      animateBattleEvents(before, { type: "pass" });
       afterAction();
     }
   }, 1000);
@@ -361,33 +408,102 @@ function updateTimerDisplay() {
 
 function doPlayerAction(action, soundKind = "magic") {
   if (!battle || battle.phase !== "player") return;
+  const before = {
+    playerHP: battle.player.hp,
+    enemyHP: battle.enemy.hp,
+    playerLane: battle.player.lane,
+    enemyLane: battle.enemy.lane,
+    log: [...battle.log],
+  };
   const result = resolvePlayerAction(battle, action);
   if (!result.ok) { toast(result.message, true); return; }
   sound.effect(soundKind);
-  if (action.type === "spell") animateSpell(action.spell);
+  animateBattleEvents(before, action);
   afterAction();
+}
+
+function newBattleLogEntries(previousLog) {
+  if (!previousLog.length) return [...battle.log];
+  for (let offset = 0; offset < battle.log.length; offset += 1) {
+    const overlap = Math.min(previousLog.length, battle.log.length - offset);
+    if (overlap > 0 && previousLog.slice(0, overlap).every((entry, index) => entry === battle.log[offset + index])) {
+      return battle.log.slice(0, offset);
+    }
+  }
+  return battle.log.slice(0, 6);
+}
+
+function animateBattleEvents(before, action) {
+  const freshLogs = newBattleLogEntries(before.log);
+  const playerSpell = action.type === "spell" && freshLogs.some((entry) => entry.includes(`${battle.player.name}の「${action.spell.name}」`));
+  if (playerSpell) animateSpell(action.spell, "player");
+  const enemySpell = battle.enemy.spells.find((spell) => freshLogs.some((entry) => entry.includes(`${battle.enemy.name}の「${spell.name}」`)));
+  if (enemySpell) animateSpell(enemySpell, "enemy");
+
+  const playerDelta = before.playerHP - battle.player.hp;
+  const enemyDelta = before.enemyHP - battle.enemy.hp;
+  if (playerDelta > 0) animateImpact("player", playerDelta);
+  else if (playerDelta < 0) animateImpact("player", -playerDelta, true);
+  if (enemyDelta > 0) animateImpact("enemy", enemyDelta);
+  else if (enemyDelta < 0) animateImpact("enemy", -enemyDelta, true);
+  if (before.playerLane !== battle.player.lane) animateMovement("player");
+  if (before.enemyLane !== battle.enemy.lane) animateMovement("enemy");
+}
+
+function getBattleAvatar(side) {
+  return side === "player" ? $(".player-avatar-large") : $("#enemyAvatar");
+}
+
+function animateMovement(side) {
+  const avatar = getBattleAvatar(side);
+  avatar?.classList.add("is-moving");
+  window.setTimeout(() => avatar?.classList.remove("is-moving"), 460);
+}
+
+function animateImpact(side, amount, healing = false) {
+  const avatar = getBattleAvatar(side);
+  if (!avatar) return;
+  avatar.classList.remove("is-hit", "is-healing");
+  void avatar.offsetWidth;
+  avatar.classList.add(healing ? "is-healing" : "is-hit");
+  const number = document.createElement("span");
+  number.className = `impact-number${healing ? " healing" : ""}`;
+  number.textContent = `${healing ? "+" : "−"}${amount}`;
+  avatar.append(number);
+  window.setTimeout(() => { number.remove(); avatar.classList.remove("is-hit", "is-healing"); }, 820);
 }
 
 function afterAction() {
   if (!battle) return;
   renderBattle();
-  if (battle.result) finishBattle();
+  if (battle.result) {
+    stopBattleTimer();
+    battleResultTimer = window.setTimeout(finishBattle, 820);
+  }
 }
 
-function animateSpell(spell) {
+function animateSpell(spell, side) {
   const attribute = ATTRIBUTES.find((item) => item.id === spell.attributes[0]);
+  const shape = SHAPES.find((item) => item.id === spell.shape);
   const effect = $("#battleEffect");
-  effect.textContent = attribute?.icon || "✦";
-  effect.style.color = attribute?.color || "var(--gold-bright)";
-  effect.classList.remove("active");
-  void effect.offsetWidth;
-  effect.classList.add("active");
-  const spark = $("#battleSpark");
-  spark.textContent = SHAPES.find((item) => item.id === spell.shape)?.icon || "✦";
-  window.setTimeout(() => { spark.textContent = "✦"; }, 650);
+  const projectile = document.createElement("span");
+  const selfTarget = ["heal", "barrier", "boost", "self", "summon"].includes(shape?.kind);
+  projectile.className = `spell-projectile ${side === "player" ? "from-player" : "from-enemy"}${selfTarget ? " self-target" : ""}`;
+  projectile.style.setProperty("--spell-color", attribute?.color || "var(--gold-bright)");
+  projectile.textContent = attribute?.icon || "✦";
+  const glyph = document.createElement("i");
+  glyph.textContent = shape?.icon || "✦";
+  projectile.append(glyph);
+  effect.append(projectile);
+  const avatar = getBattleAvatar(side);
+  avatar?.style.setProperty("--spell-color", attribute?.color || "var(--gold-bright)");
+  avatar?.classList.add("is-casting");
+  window.setTimeout(() => { projectile.remove(); avatar?.classList.remove("is-casting"); avatar?.style.removeProperty("--spell-color"); }, 760);
 }
 
 function finishBattle() {
+  if (battleResultTimer) window.clearTimeout(battleResultTimer);
+  battleResultTimer = null;
   stopBattleTimer();
   const outcome = battle.result;
   const cpuName = battle.enemy.name;
@@ -588,7 +704,7 @@ function bindEvents() {
   $("#moveLanePicker").addEventListener("click", (event) => { const button = event.target.closest("[data-move-lane]"); if (button) doPlayerAction({ type: "move", lane: button.dataset.moveLane }, "select"); });
   $("#battleSpellList").addEventListener("click", (event) => { const button = event.target.closest("[data-battle-spell]"); if (!button || !battle) return; const spell = battle.player.spells.find((item) => item.id === button.dataset.battleSpell); if (spell) doPlayerAction({ type: "spell", spell, targetLane: selectedTargetLane }, "magic"); });
   $("#passTurnBtn").addEventListener("click", () => doPlayerAction({ type: "pass" }, "select"));
-  $("#retreatBtn").addEventListener("click", async () => { if (await confirm("この戦いを降参してホームへ戻ります。参加EXPは獲得できます。", "降参する")) { battle.result = "defeat"; finishBattle(); } });
+  $("#retreatBtn").addEventListener("click", async () => { if (battle?.result) return; if (await confirm("この戦いを降参してホームへ戻ります。参加EXPは獲得できます。", "降参する")) { battle.result = "defeat"; finishBattle(); } });
   $("#returnHomeBtn").addEventListener("click", () => { battle = null; showView("homeScreen"); });
 
   $("#bgmVolume").addEventListener("input", (event) => { settings.bgm = Number(event.target.value); setVolume(); });

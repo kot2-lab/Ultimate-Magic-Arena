@@ -1,4 +1,4 @@
-export const VERSION = "1.1.1";
+export const VERSION = "1.2.0";
 export const MAX_SPELLS = 20;
 export const SAVE_KEY = "umaSave";
 export const SETTINGS_KEY = "umaSettings";
