@@ -23,6 +23,7 @@ let editingSpellId = null;
 let nameDialogMode = "rename";
 let savedBeforeNewJourney = null;
 let tutorialIndex = 0;
+let utilityOpenedFromTitle = false;
 
 const tutorialSteps = [
   { view: "homeScreen", title: "ここが冒険の拠点", body: "ホームから対戦、魔法工房、魔法書庫へ進めます。まずは自分の魔法を整えてから、闘技場へ向かいましょう。" },
@@ -753,7 +754,18 @@ function setVolume() { sound.setVolumes(settings.bgm, settings.sfx); saveSetting
 function bindEvents() {
   document.addEventListener("click", (event) => {
     const opener = event.target.closest("[data-open]");
-    if (opener) { event.preventDefault(); showView(opener.dataset.open); sound.effect("select"); }
+    if (opener) {
+      event.preventDefault();
+      const destination = opener.dataset.open;
+      const isTitleUtility = ["helpScreen", "updatesScreen", "settingsScreen"].includes(destination);
+      if (opener.closest("#titleScreen")) utilityOpenedFromTitle = isTitleUtility;
+      else if (!isTitleUtility && destination !== "creditsDialog") utilityOpenedFromTitle = false;
+      if (opener.classList.contains("back-link") && utilityOpenedFromTitle) {
+        utilityOpenedFromTitle = false;
+        showTitle();
+      } else showView(destination);
+      sound.effect("select");
+    }
   });
 
   $("#startBtn").addEventListener("click", beginNewJourney);
