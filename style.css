@@ -120,9 +120,6 @@ button:disabled { opacity: .45; cursor: not-allowed !important; transform: none 
 @keyframes pulse { to { opacity:.55; } }
 @keyframes spell-flash { 0% { opacity:0; transform:scale(.25) rotate(-15deg); } 35% { opacity:1; transform:scale(1.15) rotate(6deg); } 100% { opacity:0; transform:scale(1.8) rotate(20deg); } }
 
-@media (prefers-reduced-motion: reduce) {
-  *,*::before,*::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
-}
 body.reduce-motion *,body.reduce-motion *::before,body.reduce-motion *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 
 /* Keep the battlefield and action choices together on desktop. */
@@ -239,7 +236,7 @@ body.reduce-motion *,body.reduce-motion *::before,body.reduce-motion *::after { 
 .battle-announcement.move strong { color:#d9e4ff; text-shadow:0 0 22px rgba(102,145,231,.8),0 3px 8px #171318; }
 .battle-announcement.miss strong { color:#ddd3bf; text-shadow:0 0 18px rgba(176,162,134,.55),0 3px 8px #171318; }
 @keyframes combat-announcement { 0% { opacity:0; transform:translateY(14px) scale(.78); } 18% { opacity:1; transform:translateY(0) scale(1.05); } 34% { transform:scale(1); } 78% { opacity:1; } 100% { opacity:0; transform:translateY(-8px) scale(1.01); } }
-@media (prefers-reduced-motion: reduce) { .battle-announcement.active { animation:none; opacity:1; } }
+@media (prefers-reduced-motion: reduce) { body.reduce-motion .battle-announcement.active { animation:none; opacity:1; } }
 @media (max-width:760px) { .battle-announcement strong { font-size:clamp(25px,8vw,38px); }.battle-announcement.critical strong { font-size:clamp(34px,10vw,54px); }.battle-announcement span { max-width:92vw; padding:5px 8px; } }
 
 .update-current { display:flex; align-items:center; gap:13px; margin:0 0 18px; padding:15px 18px; border:1px solid var(--line-strong); background:linear-gradient(100deg,rgba(197,166,107,.15),rgba(25,27,34,.9) 65%); }
@@ -426,7 +423,3 @@ body.battle-screen-open .view.battle-view.active { height:calc(100dvh - 74px); m
 @keyframes persistent-poison { 0% { opacity:0; transform:translate(-50%,12px) scale(.7); filter:hue-rotate(0); } 25%,72% { opacity:1; filter:hue-rotate(45deg); } 100% { opacity:0; transform:translate(-50%,-18px) scale(1.1); filter:hue-rotate(110deg); } }
 @keyframes persistent-linger { 0% { opacity:0; transform:translate(-50%,12px) rotate(-15deg) scale(.7); } 20%,75% { opacity:1; } 100% { opacity:0; transform:translate(-50%,-18px) rotate(20deg) scale(1.15); } }
 body.reduce-motion .shape-impact,body.reduce-motion .special-impact,body.reduce-motion .element-mote,body.reduce-motion .special-seal,body.reduce-motion .persistent-effect { animation:none !important; opacity:.85; }
-@media (prefers-reduced-motion:reduce) { .impact-shake,.impact-shake-heavy { animation:none !important; } }
-@media (prefers-reduced-motion:reduce) {
-  .spell-projectile,.spell-projectile::before,.spell-projectile::after,.element-mote,.special-seal,.shape-impact,.shape-impact::before,.shape-impact::after,.special-impact,.persistent-effect { animation:none !important; }
-}
