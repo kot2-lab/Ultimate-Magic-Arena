@@ -1,7 +1,7 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, requiredExp, synergyFor } from "./data.js?v=1.4.3";
-import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.4.3";
-import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.4.3";
-import { Soundscape } from "./audio.js?v=1.4.3";
+import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, requiredExp, synergyFor } from "./data.js?v=1.4.4";
+import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.4.4";
+import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.4.4";
+import { Soundscape } from "./audio.js?v=1.4.4";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -16,6 +16,7 @@ let battleTimer = null;
 let battleResultTimer = null;
 let battleActionTimer = null;
 let battleAnimationLocked = false;
+let pendingBattleAction = null;
 let selectedAttributes = ["fire"];
 let selectedShape = "bullet";
 let selectedTargetLane = "center";
@@ -292,7 +293,7 @@ function renderBattle() {
   const spellList = $("#battleSpellList");
   spellList.replaceChildren(...battle.player.spells.map((spell) => {
     const button = document.createElement("button");
-    button.type = "button"; button.className = "battle-spell"; button.dataset.battleSpell = spell.id;
+    button.type = "button"; button.className = `battle-spell${pendingBattleAction?.type === "spell" && pendingBattleAction.spell.id === spell.id ? " selected" : ""}`; button.dataset.battleSpell = spell.id;
     const cost = costForSpell(spell);
     const icon = ATTRIBUTES.find((item) => item.id === spell.attributes[0])?.icon || "✦";
     button.innerHTML = `<span class="battle-spell-icon">${icon}</span><span class="battle-spell-name"></span><span class="battle-spell-cost">${cost}MP</span>`;
@@ -303,13 +304,31 @@ function renderBattle() {
   const blocked = battle.player.statuses.some((status) => ["sleep"].includes(status.id));
   $("#actionHint").textContent = battleAnimationLocked ? `${battle.enemy.name}のターン · 相手の動きを見よう` : blocked ? "状態異常で行動できません" : "1ターンに1行動";
   $$("[data-move-lane]").forEach((button) => {
-    button.classList.toggle("selected", button.dataset.moveLane === battle.player.lane);
+    button.classList.toggle("selected", pendingBattleAction?.type === "move" && pendingBattleAction.lane === button.dataset.moveLane);
     button.disabled = battle.phase !== "player" || battleAnimationLocked || battle.player.lane === button.dataset.moveLane || battle.player.statuses.some((status) => status.id === "bind");
   });
   $$("[data-target-lane]").forEach((button) => { button.classList.toggle("selected", button.dataset.targetLane === selectedTargetLane); button.disabled = battle.phase !== "player" || battleAnimationLocked; });
   $("#passTurnBtn").disabled = battle.phase !== "player" || battleAnimationLocked;
+  $("#passTurnBtn").classList.toggle("selected", pendingBattleAction?.type === "pass");
+  $("#actionPreview").textContent = describePendingBattleAction();
+  $("#confirmBattleActionBtn").disabled = !pendingBattleAction || battle.phase !== "player" || battleAnimationLocked;
+  $("#cancelBattleActionBtn").disabled = !pendingBattleAction || battle.phase !== "player" || battleAnimationLocked;
+  $("#actionConfirmation").classList.toggle("has-selection", Boolean(pendingBattleAction));
   $("#retreatBtn").disabled = Boolean(battle.result);
   updateTimerDisplay();
+}
+
+function describePendingBattleAction() {
+  if (!pendingBattleAction) return "行動を選択してください。決定前なら何度でも選び直せます。";
+  if (pendingBattleAction.type === "spell") return `「${pendingBattleAction.spell.name}」を使用 · ${LANE_NAMES[pendingBattleAction.targetLane]}を狙う`;
+  if (pendingBattleAction.type === "move") return `${LANE_NAMES[pendingBattleAction.lane]}へ移動`;
+  return "このターンはパスする";
+}
+
+function selectBattleAction(action) {
+  if (!battle || battle.phase !== "player" || battleAnimationLocked) return;
+  pendingBattleAction = action;
+  renderBattle();
 }
 
 function renderBattleLaneMap() {
@@ -378,6 +397,7 @@ function startBattle(cpuLevel) {
   if (battleActionTimer) window.clearTimeout(battleActionTimer);
   battleActionTimer = null;
   battleAnimationLocked = false;
+  pendingBattleAction = null;
   battleResultTimer = null;
   sound.unlock();
   sound.effect("select");
@@ -392,6 +412,7 @@ function startBattle(cpuLevel) {
     battle.secondsLeft -= 1;
     updateTimerDisplay();
     if (battle.secondsLeft <= 0) {
+      pendingBattleAction = null;
       const before = { playerHP: battle.player.hp, enemyHP: battle.enemy.hp, playerLane: battle.player.lane, enemyLane: battle.enemy.lane, log: [...battle.log] };
       expirePlayerTurn(battle);
       animateBattleEvents(before, { type: "pass" });
@@ -423,6 +444,7 @@ function doPlayerAction(action, soundKind = "magic") {
   };
   const result = resolvePlayerAction(battle, action);
   if (!result.ok) { toast(result.message, true); return; }
+  pendingBattleAction = null;
   sound.effect(soundKind);
   animateBattleEvents(before, action, result);
   afterAction(before);
@@ -604,6 +626,7 @@ function finishBattle() {
   if (battleActionTimer) window.clearTimeout(battleActionTimer);
   battleActionTimer = null;
   battleAnimationLocked = false;
+  pendingBattleAction = null;
   battleResultTimer = null;
   stopBattleTimer();
   const outcome = battle.result;
@@ -814,10 +837,12 @@ function bindEvents() {
   $("#spellPower").addEventListener("input", updatePreview);
   $("#spellSpecial").addEventListener("change", updatePreview);
 
-  $("#targetLanePicker").addEventListener("click", (event) => { const button = event.target.closest("[data-target-lane]"); if (!button) return; selectedTargetLane = button.dataset.targetLane; renderBattle(); });
-  $("#moveLanePicker").addEventListener("click", (event) => { const button = event.target.closest("[data-move-lane]"); if (button) doPlayerAction({ type: "move", lane: button.dataset.moveLane }, "select"); });
-  $("#battleSpellList").addEventListener("click", (event) => { const button = event.target.closest("[data-battle-spell]"); if (!button || !battle) return; const spell = battle.player.spells.find((item) => item.id === button.dataset.battleSpell); if (spell) doPlayerAction({ type: "spell", spell, targetLane: selectedTargetLane }, "magic"); });
-  $("#passTurnBtn").addEventListener("click", () => doPlayerAction({ type: "pass" }, "select"));
+  $("#targetLanePicker").addEventListener("click", (event) => { const button = event.target.closest("[data-target-lane]"); if (!button) return; selectedTargetLane = button.dataset.targetLane; if (pendingBattleAction?.type === "spell") pendingBattleAction.targetLane = selectedTargetLane; renderBattle(); });
+  $("#moveLanePicker").addEventListener("click", (event) => { const button = event.target.closest("[data-move-lane]"); if (button) selectBattleAction({ type: "move", lane: button.dataset.moveLane }); });
+  $("#battleSpellList").addEventListener("click", (event) => { const button = event.target.closest("[data-battle-spell]"); if (!button || !battle) return; const spell = battle.player.spells.find((item) => item.id === button.dataset.battleSpell); if (spell) selectBattleAction({ type: "spell", spell, targetLane: selectedTargetLane }); });
+  $("#passTurnBtn").addEventListener("click", () => selectBattleAction({ type: "pass" }));
+  $("#confirmBattleActionBtn").addEventListener("click", () => { if (pendingBattleAction) doPlayerAction(pendingBattleAction, pendingBattleAction.type === "spell" ? "magic" : "select"); });
+  $("#cancelBattleActionBtn").addEventListener("click", () => { pendingBattleAction = null; renderBattle(); });
   $("#retreatBtn").addEventListener("click", async () => { if (battle?.result) return; if (await confirm("この戦いを降参してホームへ戻ります。参加EXPは獲得できます。", "降参する")) { battle.result = "defeat"; finishBattle(); } });
   $("#returnHomeBtn").addEventListener("click", () => { battle = null; showView("homeScreen"); });
 
