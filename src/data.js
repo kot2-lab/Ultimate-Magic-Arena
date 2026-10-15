@@ -1,4 +1,4 @@
-export const VERSION = "1.4.5";
+export const VERSION = "1.4.6";
 export const MAX_SPELLS = 20;
 export const SAVE_KEY = "umaSave";
 export const SETTINGS_KEY = "umaSettings";
@@ -119,7 +119,7 @@ export function freshPlayer() {
     name: "新人魔法使い", level: 1, exp: 0, rate: 1000,
     hp: 100, maxHP: 100, mp: 30, maxMP: 70, mpRegen: 5,
     wins: 0, losses: 0, battles: 0, lastBattle: null,
-    spells: defaultSpells(), tutorialCompleted: false,
+    spells: defaultSpells(), tutorialCompleted: false, battleControlsTutorialCompleted: false,
   };
 }
 
@@ -135,6 +135,7 @@ export function migratePlayer(saved) {
     ...saved,
     // Existing Ver.1.0 saves should continue without being interrupted by onboarding.
     tutorialCompleted: typeof saved.tutorialCompleted === "boolean" ? saved.tutorialCompleted : true,
+    battleControlsTutorialCompleted: saved.battleControlsTutorialCompleted === true,
   };
   const finite = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   player.level = Math.min(999, Math.max(1, finite(player.level, 1)));

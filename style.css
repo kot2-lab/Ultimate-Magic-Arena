@@ -249,6 +249,55 @@ body.reduce-motion *,body.reduce-motion *::before,body.reduce-motion *::after { 
 .update-timeline { display:grid; gap:10px; }.update-card { position:relative; padding:16px 19px 13px; border:1px solid var(--line); background:linear-gradient(125deg,rgba(36,37,43,.93),rgba(21,23,29,.93)); }.update-card.latest { border-color:rgba(228,202,145,.53); box-shadow:inset 3px 0 0 rgba(228,202,145,.7),0 8px 25px rgba(0,0,0,.12); }
 .update-card-head { display:flex; align-items:center; gap:11px; }.update-version { color:var(--gold-bright); font:500 12px var(--mono); letter-spacing:.06em; }.update-date { color:#d2c7b2; font-size:11px; }.update-card ul { display:grid; gap:5px; margin:10px 0 0; padding-left:18px; color:var(--muted); font-size:11px; line-height:1.7; }.update-card li::marker { color:var(--gold-dim); }.updates-note { margin:14px 0 0; color:var(--faint); font-size:10px; line-height:1.7; text-align:center; }
 @media (max-width:760px) { .update-current { padding:12px; }.update-card { padding:14px 14px 12px; }.update-card-head { flex-wrap:wrap; gap:6px 10px; }.update-card ul { font-size:10px; } }
+
+/* Mobile-first battle controls: clear labels and comfortable touch targets. */
+@media (max-width:760px) {
+  .outline-button,.gold-button,.back-link,.text-button,.quiet-link { min-height:44px; }
+  .cpu-card { min-height:82px; gap:12px; padding:12px; }
+  .cpu-level { width:42px; height:42px; flex-basis:42px; font-size:14px; }
+  .cpu-card strong { font-size:15px; }
+  .cpu-card small { font-size:12px; }
+  .attribute-option,.choice-option { min-height:52px; padding:8px 7px; }
+  .attribute-option .attr-name,.choice-option .choice-name { font-size:11px; }
+  .select-input,.text-input { min-height:48px; font-size:16px; }
+  .dialog-actions .outline-button,.dialog-actions .gold-button { min-height:48px; }
+  .help-footer>div { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+  .help-footer>div .outline-button { flex:1 1 140px; }
+  .battle-view { padding-inline:12px; }
+  .battle-top .back-link { min-height:44px; padding-inline:11px; font-size:12px; }
+  .battle-arena { min-height:306px; grid-template-rows:minmax(0,1fr) 62px; padding:34px 8px 10px; }
+  .battle-controls { padding:15px 13px; }
+  .battle-control-head { align-items:flex-end; gap:8px; }
+  .battle-control-head h3 { font-size:19px; }
+  .battle-control-head>span { max-width:45%; font-size:12px; line-height:1.45; text-align:right; }
+  .target-picker { display:grid; gap:8px; margin:16px 0 12px; font-size:13px; }
+  .target-buttons { width:100%; gap:8px; }
+  .target-buttons button { flex:1; min-width:0; min-height:48px; padding:8px 5px; font-size:13px; touch-action:manipulation; }
+  .battle-spells { grid-template-columns:1fr; max-height:300px; gap:8px; }
+  .battle-spell { min-height:54px; gap:10px; padding:11px 12px; }
+  .battle-spell-icon { font-size:20px; }
+  .battle-spell-name { font-size:14px; }
+  .battle-spell-cost { font-size:12px; }
+  .lane-action-row { align-items:stretch; gap:9px; }
+  .move-picker { min-width:0; flex:1; align-items:stretch; flex-direction:column; gap:7px; font-size:12px; }
+  .move-picker .target-buttons button { min-height:46px; }
+  .pass-button { min-width:74px; min-height:50px; align-self:flex-end; font-size:13px; }
+  .action-confirmation { gap:10px; margin-top:13px; padding:11px; }
+  .action-confirmation p { min-height:22px; font-size:12px; line-height:1.6; }
+  .action-confirmation>div { gap:8px; }
+  .action-confirmation button { min-height:48px; padding:8px 10px; font-size:12px; }
+  .battle-log-panel { padding:13px; }
+  .battle-log { max-height:220px; font-size:13px; }
+  .battle-guide-dialog .tutorial-body { min-height:110px; font-size:16px !important; line-height:1.9; }
+  .battle-guide-dialog .tutorial-actions .gold-button,
+  .battle-guide-dialog .tutorial-actions .outline-button { min-height:48px; font-size:13px; }
+}
+@media (max-width:380px) {
+  .battle-controls { padding-inline:10px; }
+  .battle-control-head>span { font-size:11px; }
+  .battle-arena { min-height:292px; grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr); }
+  .battle-spell { min-height:52px; }
+}
 body.reduce-motion .battle-announcement.active { opacity:1; animation:none !important; }
 body.reduce-motion .spell-projectile { opacity:1; transform:none; animation:none !important; }
 body.reduce-motion .battle-effect.active::before { opacity:0; animation:none !important; }

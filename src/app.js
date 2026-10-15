@@ -1,7 +1,7 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, freshSettings, migratePlayer, requiredExp, synergyFor } from "./data.js?v=1.4.5";
-import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.4.5";
-import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.4.5";
-import { Soundscape } from "./audio.js?v=1.4.5";
+import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, freshSettings, migratePlayer, requiredExp, synergyFor } from "./data.js?v=1.4.6";
+import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.4.6";
+import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.4.6";
+import { Soundscape } from "./audio.js?v=1.4.6";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -25,6 +25,16 @@ let nameDialogMode = "rename";
 let savedBeforeNewJourney = null;
 let tutorialIndex = 0;
 let utilityOpenedFromTitle = false;
+let battleGuideIndex = 0;
+let battleGuideMarksComplete = false;
+
+const battleGuideSteps = [
+  { title: "まずは戦場を見よう", body: "画面上部に自分と相手のHP・MP、中央に三つのレーンがあります。相手のいる場所を見ながら、次の一手を決めます。" },
+  { title: "狙う場所を選ぶ", body: "「狙うレーン」で左翼・中央・右翼を選びます。最初から相手のレーンが選ばれているので、迷ったらそのままで大丈夫です。" },
+  { title: "使う行動を選ぶ", body: "魔法、移動、パスから一つ選びます。この時点ではまだ実行されません。魔法はMPが足りないと選べません。" },
+  { title: "確認してから決定", body: "下の確認欄に選んだ行動が表示されます。「この行動を決定」で実行。違うと思ったら、別の行動を選ぶか「選び直す」で取り消せます。" },
+  { title: "時間はゆっくり考えてOK", body: "自分の番は15秒です。時間切れになるとその番はパスになります。ガイドを閉じるまで時間は進まないので、まずは気楽に試してみましょう。" },
+];
 
 const tutorialSteps = [
   { view: "homeScreen", title: "ここが冒険の拠点", body: "ホームから対戦、魔法工房、魔法書庫へ進めます。まずは自分の魔法を整えてから、闘技場へ向かいましょう。" },
@@ -319,7 +329,7 @@ function renderBattle() {
 }
 
 function describePendingBattleAction() {
-  if (!pendingBattleAction) return "行動を選択してください。決定前なら何度でも選び直せます。";
+  if (!pendingBattleAction) return "①狙うレーン → ②行動を選ぶ → ③決定。決定前なら何度でも選び直せます。";
   if (pendingBattleAction.type === "spell") return `「${pendingBattleAction.spell.name}」を使用 · ${LANE_NAMES[pendingBattleAction.targetLane]}を狙う`;
   if (pendingBattleAction.type === "move") return `${LANE_NAMES[pendingBattleAction.lane]}へ移動`;
   return "このターンはパスする";
@@ -407,6 +417,15 @@ function startBattle(cpuLevel) {
   $("#battleArena").dataset.difficulty = String(cpuLevel);
   renderBattle();
   stopBattleTimer();
+  if (!player.battleControlsTutorialCompleted) {
+    battleGuideMarksComplete = true;
+    battleGuideIndex = 0;
+    renderBattleGuide();
+  } else startBattleTimer();
+}
+
+function startBattleTimer() {
+  stopBattleTimer();
   battleTimer = window.setInterval(() => {
     if (!battle || battle.phase !== "player" || battleAnimationLocked || battle.result) return;
     battle.secondsLeft -= 1;
@@ -419,6 +438,34 @@ function startBattle(cpuLevel) {
       afterAction(before);
     }
   }, 1000);
+}
+
+function renderBattleGuide() {
+  const step = battleGuideSteps[battleGuideIndex];
+  $("#battleGuideCounter").textContent = `BATTLE GUIDE · ${String(battleGuideIndex + 1).padStart(2, "0")} / ${String(battleGuideSteps.length).padStart(2, "0")}`;
+  $("#battleGuideTitle").textContent = step.title;
+  $("#battleGuideBody").textContent = step.body;
+  $("#battleGuideProgress").style.width = `${((battleGuideIndex + 1) / battleGuideSteps.length) * 100}%`;
+  $("#battleGuideBackBtn").disabled = battleGuideIndex === 0;
+  $("#battleGuideNextBtn").querySelector("span").textContent = battleGuideIndex === battleGuideSteps.length - 1 ? "対戦を始める" : "次へ";
+  if (!$("#battleGuideDialog").open) $("#battleGuideDialog").showModal();
+}
+
+function startBattleGuide(markComplete = false) {
+  battleGuideMarksComplete = markComplete;
+  battleGuideIndex = 0;
+  if (battle) stopBattleTimer();
+  renderBattleGuide();
+}
+
+function finishBattleGuide() {
+  if ($("#battleGuideDialog").open) $("#battleGuideDialog").close("complete");
+  if (battleGuideMarksComplete) {
+    player.battleControlsTutorialCompleted = true;
+    save();
+  }
+  battleGuideMarksComplete = false;
+  if (battle && battle.phase === "player" && !battle.result) startBattleTimer();
 }
 
 function stopBattleTimer() {
@@ -854,6 +901,14 @@ function bindEvents() {
   $("#tutorialSkipBtn").addEventListener("click", finishTutorial);
   $("#tutorialDialog").addEventListener("cancel", (event) => { event.preventDefault(); finishTutorial(); });
   $("#replayTutorialBtn").addEventListener("click", startTutorial);
+  $("#replayBattleGuideBtn").addEventListener("click", () => startBattleGuide(false));
+  $("#battleGuideNextBtn").addEventListener("click", () => {
+    if (battleGuideIndex === battleGuideSteps.length - 1) finishBattleGuide();
+    else { battleGuideIndex += 1; renderBattleGuide(); }
+  });
+  $("#battleGuideBackBtn").addEventListener("click", () => { if (battleGuideIndex > 0) { battleGuideIndex -= 1; renderBattleGuide(); } });
+  $("#battleGuideSkipBtn").addEventListener("click", finishBattleGuide);
+  $("#battleGuideDialog").addEventListener("cancel", (event) => { event.preventDefault(); finishBattleGuide(); });
   $("#cpuGrid").addEventListener("click", (event) => { const button = event.target.closest("[data-cpu-level]"); if (button) startBattle(Number(button.dataset.cpuLevel)); });
   $("#magicForm").addEventListener("submit", saveDraft);
   $("#magicForm").addEventListener("input", updatePreview);

@@ -31,6 +31,8 @@ test("save migration preserves zero MP and clamps invalid values", () => {
   assert.equal(player.level, 999);
   assert.equal(player.tutorialCompleted, false);
   assert.equal(migratePlayer({ name: "既存プレイヤー" }).tutorialCompleted, true);
+  assert.equal(migratePlayer({ name: "既存プレイヤー" }).battleControlsTutorialCompleted, false);
+  assert.equal(migratePlayer({ ...freshPlayer(), battleControlsTutorialCompleted: true }).battleControlsTutorialCompleted, true);
 });
 
 test("local save round-trips through storage and corrupt data is recoverable", () => {
