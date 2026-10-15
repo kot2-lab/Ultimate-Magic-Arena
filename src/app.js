@@ -1,7 +1,7 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, freshSettings, migratePlayer, requiredExp, synergyFor } from "./data.js?v=1.4.6";
-import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.4.6";
-import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.4.6";
-import { Soundscape } from "./audio.js?v=1.4.6";
+import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, freshSettings, migratePlayer, requiredExp, synergyFor } from "./data.js?v=1.4.7";
+import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.4.7";
+import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.4.7";
+import { Soundscape } from "./audio.js?v=1.4.7";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -86,6 +86,11 @@ function showView(id) {
   if (id === "creditsDialog") { $("#creditsDialog").showModal(); return; }
   const view = document.getElementById(id);
   if (!view) return;
+  document.body.classList.toggle("battle-screen-open", id === "battleScreen");
+  if (id !== "battleScreen") {
+    document.body.classList.remove("show-battle-log");
+    $("#battleLogToggle")?.setAttribute("aria-expanded", "false");
+  }
   $("#titleScreen").classList.remove("active");
   $("#gameShell").classList.add("active");
   $$(".view").forEach((item) => item.classList.toggle("active", item === view));
@@ -97,11 +102,12 @@ function showView(id) {
   if (id === "profileScreen") renderProfile();
   if (id === "settingsScreen") renderSettings();
   if (id === "battleScreen") renderBattle();
-  window.scrollTo({ top: 0, behavior: settings.motion ? "smooth" : "instant" });
+  if (id !== "battleScreen") window.scrollTo({ top: 0, behavior: settings.motion ? "smooth" : "instant" });
 }
 
 function showTitle() {
   stopBattleTimer();
+  document.body.classList.remove("battle-screen-open");
   $("#gameShell").classList.remove("active");
   $("#titleScreen").classList.add("active");
   $$(".rail-link").forEach((item) => item.classList.remove("active"));
@@ -520,7 +526,7 @@ function animateBattleEvents(before, action, playerResult = null) {
     else if (shape?.kind === "heal") showBattleAnnouncement(`回復！ +${playerSpellLog.match(/HPが(\d+)回復/)?.[1] || 0}`, `${action.spell.name} · HPを回復`, "heal");
     else if (shape?.kind === "damage" && playerResult?.damage > 0) showBattleAnnouncement("命中！", `${shape.name} · ${action.spell.name} · −${playerResult.damage}`, "attack");
     else showBattleAnnouncement("魔法発動！", `${shape?.name || "魔法"} · ${action.spell.name}`, "attack");
-    animateSpell(action.spell, "player");
+    animateSpell(action.spell, "player", { lane: playerResult?.hit === false ? battle.enemy.lane : action.targetLane, missed: playerResult?.hit === false });
   } else if (action.type === "move") {
     showBattleAnnouncement("移動！", `レーンを移動 · ${LANE_NAMES[action.lane]}`, "move");
   } else if (action.type === "pass") {
@@ -545,7 +551,7 @@ function animateBattleEvents(before, action, playerResult = null) {
       else if (playerDelta > 0) showBattleAnnouncement("被弾！", `${battle.enemy.name}の攻撃 · ${enemySpell.name} · −${playerDelta}`, "damage");
       else if (enemyDelta < 0) showBattleAnnouncement(`CPU回復！ +${-enemyDelta}`, `相手の魔法 · ${enemySpell.name}`, "enemy");
       else showBattleAnnouncement("相手の行動", `CPUの魔法 · ${enemySpell.name}`, "enemy");
-      animateSpell(enemySpell, "enemy");
+      animateSpell(enemySpell, "enemy", { lane: before.playerLane, missed: enemySpellLog.includes("届かなかった") });
     } else if (before.enemyLane !== battle.enemy.lane) {
       showBattleAnnouncement("相手が移動！", `${battle.enemy.name} · ${LANE_NAMES[battle.enemy.lane]}へ`, "enemy");
     } else if (playerDelta > 0) {
@@ -555,6 +561,23 @@ function animateBattleEvents(before, action, playerResult = null) {
     if (playerDelta > 0) window.setTimeout(() => revealBattleImpact("player", playerDelta), enemySpell && settings.motion ? 820 : 100);
     else if (playerDelta < 0) window.setTimeout(() => revealBattleImpact("player", -playerDelta, true), 100);
   }, enemyBeatDelay);
+  animatePersistentEffects(freshLogs);
+}
+
+function animatePersistentEffects(logs) {
+  for (const log of logs) {
+    const kind = log.includes("火傷") ? "burn" : log.includes("毒で") ? "poison" : log.includes("余波") ? "lingering" : log.includes("使い魔") ? "summon" : null;
+    if (!kind) continue;
+    const side = log.includes(battle.player.name) ? "player" : "enemy";
+    const avatar = getBattleAvatar(side);
+    if (!avatar) continue;
+    const pulse = document.createElement("span");
+    pulse.className = `persistent-effect persistent-${kind}`;
+    pulse.textContent = ({ burn: "🔥 火傷", poison: "☠ 毒", lingering: "∞ 余波", summon: "♙ 使い魔" })[kind];
+    pulse.setAttribute("aria-hidden", "true");
+    avatar.append(pulse);
+    window.setTimeout(() => pulse.remove(), 1500);
+  }
 }
 
 function showBattleAnnouncement(title, detail, kind = "attack") {
@@ -644,28 +667,87 @@ function afterAction(before) {
   }
 }
 
-function animateSpell(spell, side) {
+function animateSpell(spell, side, { lane, missed = false } = {}) {
   const attribute = ATTRIBUTES.find((item) => item.id === spell.attributes[0]);
+  const spellAttributes = spell.attributes.map((id) => ATTRIBUTES.find((item) => item.id === id)).filter(Boolean);
   const shape = SHAPES.find((item) => item.id === spell.shape);
+  const special = SPECIALS.find((item) => item.id === spell.special);
   const effect = $("#battleEffect");
   effect.classList.add("active");
+  effect.dataset.element = spellAttributes.map((item) => item.id).join(" ") || "neutral";
+  effect.dataset.shape = shape?.id || "bullet";
+  effect.dataset.special = special?.id || "critical";
   const projectile = document.createElement("span");
   const selfTarget = ["heal", "barrier", "boost", "self", "summon"].includes(shape?.kind);
-  projectile.className = `spell-projectile ${side === "player" ? "from-player" : "from-enemy"}${selfTarget ? " self-target" : ""}`;
+  projectile.className = `spell-projectile ${spellAttributes.map((item) => `element-${item.id}`).join(" ") || "element-neutral"} shape-${shape?.id || "bullet"} special-${special?.id || "critical"} ${side === "player" ? "from-player" : "from-enemy"}${selfTarget ? " self-target" : ""}`;
   projectile.style.setProperty("--spell-color", attribute?.color || "var(--gold-bright)");
   projectile.textContent = attribute?.icon || "✦";
   const glyph = document.createElement("i");
+  glyph.className = "shape-glyph";
   glyph.textContent = shape?.icon || "✦";
   projectile.append(glyph);
+  const elementMotifs = {
+    fire: ["✧", "·", "✦", "•", "✧", "·", "✦", "•"], water: ["◦", "·", "◌", "○", "◦", "·", "◌", "○"],
+    wind: ["〰", "›", "·", "〰", "›", "·", "〰", "›"], grass: ["❋", "·", "✿", "❋", "·", "✿", "❋", "·"],
+    thunder: ["ϟ", "·", "ϟ", "✦", "ϟ", "·", "ϟ", "✦"], ice: ["❄", "·", "✧", "❅", "❄", "·", "✧", "❅"],
+    light: ["✧", "✦", "·", "✧", "✦", "·", "✧", "✦"], dark: ["◌", "·", "●", "◌", "·", "●", "◌", "·"],
+    poison: ["◉", "·", "◦", "☠", "◉", "·", "◦", "☠"], ore: ["◆", "▪", "·", "◆", "▪", "·", "◆", "▪"],
+    robot: ["⚙", "·", "⌘", "⚙", "·", "⌘", "⚙", "·"], neutral: ["✧", "·", "◇", "✧", "·", "◇", "✧", "·"],
+  };
+  const motes = document.createElement("span");
+  motes.className = "element-motes";
+  const combinedMotifs = spellAttributes.flatMap((item) => elementMotifs[item.id] || elementMotifs.neutral).slice(0, 12);
+  const moteOffsets = [[-55,-35],[-38,-62],[-18,-48],[2,-67],[22,-49],[43,-61],[57,-32],[-54,0],[-35,23],[-10,7],[22,24],[51,4]];
+  (combinedMotifs.length ? combinedMotifs : elementMotifs.neutral).forEach((symbol, index) => {
+    const mote = document.createElement("span");
+    mote.className = "element-mote";
+    mote.textContent = symbol;
+    mote.style.setProperty("--mote-index", String(index));
+    mote.style.setProperty("--mote-x", `${moteOffsets[index][0]}px`);
+    mote.style.setProperty("--mote-y", `${moteOffsets[index][1]}px`);
+    const moteAttribute = spellAttributes[Math.floor(index / 8)] || attribute;
+    mote.style.setProperty("--mote-color", moteAttribute?.color || "var(--gold-bright)");
+    motes.append(mote);
+  });
+  projectile.append(motes);
+  const seal = document.createElement("span");
+  seal.className = "special-seal";
+  seal.textContent = special?.icon || "✦";
+  seal.setAttribute("aria-label", special?.name || "魔法効果");
+  projectile.append(seal);
   effect.append(projectile);
+  const shapeMark = document.createElement("span");
+  shapeMark.className = `shape-impact shape-impact-${shape?.id || "bullet"} ${side === "player" ? "for-player" : "for-enemy"}${["explosion", "wave", "all", "range", "trap"].includes(shape?.id) ? " shape-impact-area" : ""}${missed ? " is-missed" : ""}`;
+  shapeMark.classList.add(`lane-${lane || (side === "player" ? battle.enemy.lane : battle.player.lane)}`);
+  shapeMark.textContent = shape?.icon || "✦";
+  shapeMark.style.setProperty("--spell-color", attribute?.color || "var(--gold-bright)");
+  effect.append(shapeMark);
+  let specialMark = null;
+  if (["homing", "pierce", "split", "chain", "absorb", "efficient", "quick", "knockback", "pull", "pierceBurst", "delayed", "lasting", "critical", "breaker", "random"].includes(special?.id)) {
+    specialMark = document.createElement("span");
+    specialMark.className = `special-impact special-impact-${special.id}`;
+    specialMark.textContent = special.icon;
+    effect.append(specialMark);
+  }
   const callout = document.createElement("span");
-  callout.className = `spell-callout ${side === "player" ? "for-player" : "for-enemy"}`;
-  callout.textContent = `${side === "player" ? "あなたの魔法" : `${battle.enemy.name}の魔法`} · ${spell.name}`;
+  callout.className = `spell-callout element-${attribute?.id || "neutral"} ${side === "player" ? "for-player" : "for-enemy"}`;
+  callout.textContent = `${spellAttributes.map((item) => item.name).join("＋") || attribute?.name || "魔力"} · ${shape?.name || "魔法"} · ${special?.name || "発動"} · ${spell.name}`;
   effect.append(callout);
   const avatar = getBattleAvatar(side);
   avatar?.style.setProperty("--spell-color", attribute?.color || "var(--gold-bright)");
   avatar?.classList.add("is-casting");
-  window.setTimeout(() => { projectile.remove(); callout.remove(); avatar?.classList.remove("is-casting"); avatar?.style.removeProperty("--spell-color"); }, 1200);
+  if (settings.motion && ["explosion", "wave", "all", "beam"].includes(shape?.id)) {
+    const arena = $("#battleArena");
+    arena.classList.remove("impact-shake", "impact-shake-heavy");
+    void arena.offsetWidth;
+    arena.classList.add(spell.special === "critical" || spell.special === "pierceBurst" ? "impact-shake-heavy" : "impact-shake");
+    window.setTimeout(() => arena.classList.remove("impact-shake", "impact-shake-heavy"), 620);
+  }
+  window.setTimeout(() => {
+    projectile.remove(); shapeMark.remove(); callout.remove();
+    specialMark?.remove();
+    avatar?.classList.remove("is-casting"); avatar?.style.removeProperty("--spell-color");
+  }, 1800);
 }
 
 function finishBattle() {
@@ -909,6 +991,14 @@ function bindEvents() {
   $("#battleGuideBackBtn").addEventListener("click", () => { if (battleGuideIndex > 0) { battleGuideIndex -= 1; renderBattleGuide(); } });
   $("#battleGuideSkipBtn").addEventListener("click", finishBattleGuide);
   $("#battleGuideDialog").addEventListener("cancel", (event) => { event.preventDefault(); finishBattleGuide(); });
+  $("#battleLogToggle").addEventListener("click", () => {
+    const isOpen = document.body.classList.toggle("show-battle-log");
+    $("#battleLogToggle").setAttribute("aria-expanded", String(isOpen));
+  });
+  $("#battleLogCloseBtn").addEventListener("click", () => {
+    document.body.classList.remove("show-battle-log");
+    $("#battleLogToggle").setAttribute("aria-expanded", "false");
+  });
   $("#cpuGrid").addEventListener("click", (event) => { const button = event.target.closest("[data-cpu-level]"); if (button) startBattle(Number(button.dataset.cpuLevel)); });
   $("#magicForm").addEventListener("submit", saveDraft);
   $("#magicForm").addEventListener("input", updatePreview);
