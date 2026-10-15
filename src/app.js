@@ -1,7 +1,7 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, requiredExp, synergyFor } from "./data.js";
-import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js";
-import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js";
-import { Soundscape } from "./audio.js";
+import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, requiredExp, synergyFor } from "./data.js?v=1.4.1";
+import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.4.1";
+import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.4.1";
+import { Soundscape } from "./audio.js?v=1.4.1";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
