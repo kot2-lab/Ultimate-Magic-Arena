@@ -1,7 +1,7 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, requiredExp, synergyFor } from "./data.js?v=1.4.1";
-import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.4.1";
-import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.4.1";
-import { Soundscape } from "./audio.js?v=1.4.1";
+import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, requiredExp, synergyFor } from "./data.js?v=1.4.2";
+import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.4.2";
+import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.4.2";
+import { Soundscape } from "./audio.js?v=1.4.2";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -758,12 +758,14 @@ function bindEvents() {
       event.preventDefault();
       const destination = opener.dataset.open;
       const isTitleUtility = ["helpScreen", "updatesScreen", "settingsScreen"].includes(destination);
-      if (opener.closest("#titleScreen")) utilityOpenedFromTitle = isTitleUtility;
-      else if (!isTitleUtility && destination !== "creditsDialog") utilityOpenedFromTitle = false;
       if (opener.classList.contains("back-link") && utilityOpenedFromTitle) {
         utilityOpenedFromTitle = false;
         showTitle();
-      } else showView(destination);
+      } else {
+        if (opener.closest("#titleScreen")) utilityOpenedFromTitle = isTitleUtility;
+        else if (!isTitleUtility && destination !== "creditsDialog") utilityOpenedFromTitle = false;
+        showView(destination);
+      }
       sound.effect("select");
     }
   });
