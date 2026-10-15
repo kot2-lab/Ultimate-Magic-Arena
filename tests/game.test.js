@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ATTRIBUTES, MAX_SPELLS, SHAPES, SPECIALS, costForSpell, defaultSpells, freshPlayer, migratePlayer, requiredExp, synergyFor } from "../src/data.js";
+import { ATTRIBUTES, CPU_NAMES, MAX_CPU_LEVEL, MAX_SPELLS, SHAPES, SPECIALS, costForSpell, defaultSpells, freshPlayer, migratePlayer, requiredExp, spellPowerLimit, spellUnlockLevel, synergyFor } from "../src/data.js";
 import { awardExperience, castSpell, createBattle, moveUnit, resolvePlayerAction } from "../src/battle.js";
 import { backupProgress, loadProgress, saveProgress } from "../src/storage.js";
 
@@ -22,6 +22,20 @@ test("spell costs and paired attribute synergy stay within builder constraints",
   const spell = { attributes: ["fire", "wind"], shape: "bullet", special: "efficient", power: 24 };
   assert.equal(synergyFor(spell.attributes).name, "陽炎");
   assert.ok(costForSpell(spell) > 0);
+});
+
+test("spell-forge options and power ceiling unlock gradually by player level", () => {
+  assert.equal(spellUnlockLevel("attributes", "fire"), 1);
+  assert.equal(spellUnlockLevel("attributes", "thunder"), 3);
+  assert.equal(spellUnlockLevel("attributes", "robot"), 8);
+  assert.equal(spellUnlockLevel("shapes", "bullet"), 1);
+  assert.equal(spellUnlockLevel("shapes", "explosion"), 5);
+  assert.equal(spellUnlockLevel("specials", "pierceBurst"), 10);
+  assert.equal(spellPowerLimit(1), 60);
+  assert.equal(spellPowerLimit(5), 60);
+  assert.equal(spellPowerLimit(6), 70);
+  assert.equal(spellPowerLimit(11), 80);
+  assert.equal(spellPowerLimit(21), 100);
 });
 
 test("save migration preserves zero MP and clamps invalid values", () => {
@@ -107,11 +121,29 @@ test("critical hits are called out in the battle log, while missed critical spel
   assert.doesNotMatch(missedBattle.log[0], /クリティカル/);
 });
 
-test("beginner CPU tuning does not change the next difficulty", () => {
+test("CPU ladder keeps the beginner gentle and makes each advanced level progressively stronger", () => {
+  assert.equal(MAX_CPU_LEVEL, 20);
+  assert.equal(CPU_NAMES.length, 20);
+  assert.equal(new Set(CPU_NAMES).size, 20);
+  const beginner = createBattle(freshPlayer(), 1, silentRandom);
+  assert.equal(beginner.enemy.maxHP, 90);
+  assert.equal(beginner.enemy.mp, 25);
+  assert.equal(beginner.enemy.mpRegen, 4);
   const battle = createBattle(freshPlayer(), 2, silentRandom);
-  assert.equal(battle.enemy.maxHP, 128);
+  assert.equal(battle.enemy.maxHP, 129);
   assert.equal(battle.enemy.mp, 40);
   assert.equal(battle.enemy.mpRegen, 5);
+  const level5 = createBattle(freshPlayer(), 5, silentRandom).enemy;
+  const level10 = createBattle(freshPlayer(), 10, silentRandom).enemy;
+  const level11 = createBattle(freshPlayer(), 11, silentRandom).enemy;
+  const level20 = createBattle(freshPlayer(), 20, silentRandom).enemy;
+  assert.ok(battle.enemy.maxHP < level5.maxHP && level5.maxHP < level10.maxHP);
+  assert.ok(level10.maxHP < level11.maxHP && level11.maxHP < level20.maxHP);
+  assert.ok(battle.enemy.maxMP < level5.maxMP && level5.maxMP < level10.maxMP);
+  assert.ok(level10.mpRegen <= level11.mpRegen && level11.mpRegen < level20.mpRegen);
+  assert.ok(level10.spells[0].power > battle.enemy.spells[0].power);
+  assert.ok(level20.spells[0].power > level10.spells[0].power);
+  assert.equal(createBattle(freshPlayer(), 100, silentRandom).difficulty, MAX_CPU_LEVEL);
 });
 
 test("experience rewards battles and levels without exceeding the cap", () => {

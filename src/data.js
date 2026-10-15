@@ -1,4 +1,4 @@
-export const VERSION = "1.4.8";
+export const VERSION = "1.4.9";
 export const MAX_SPELLS = 20;
 export const SAVE_KEY = "umaSave";
 export const SETTINGS_KEY = "umaSettings";
@@ -82,7 +82,30 @@ export const STATUS = [
   { id: "silence", name: "沈黙", icon: "🔇", turns: 2, note: "魔法を封じる" },
 ];
 
-export const CPU_NAMES = ["若葉の見習い", "石門の守り手", "霧森の術師", "雷塔の番人", "炎獅子の騎士", "氷晶の賢者", "深淵の魔導士", "星環の守護者", "古代の大賢者", "Arenaの覇者"];
+export const CPU_NAMES = [
+  "若葉の見習い", "石門の守り手", "霧森の術師", "雷塔の番人", "炎獅子の騎士",
+  "氷晶の賢者", "深淵の魔導士", "星環の守護者", "古代の大賢者", "Arenaの覇者",
+  "白銀の剣聖", "灰燼の竜騎士", "月喰らいの巫女", "深森の古王", "灰冠の大魔導士",
+  "竜骸の覇者", "夢幻の魔女", "暁星の審判者", "終焉の竜神", "神話のArena覇者",
+];
+export const MAX_CPU_LEVEL = CPU_NAMES.length;
+
+// Spell-forge progression affects only newly selected options. Existing recipes
+// remain available in saved data and can still be edited without losing choices.
+const SPELL_UNLOCKS = {
+  attributes: { fire: 1, water: 1, wind: 1, grass: 1, thunder: 3, ice: 3, light: 5, dark: 5, poison: 5, ore: 5, robot: 8, neutral: 8 },
+  shapes: { bullet: 1, laser: 1, heal: 1, barrier: 1, self: 3, wave: 3, fall: 3, explosion: 5, trap: 5, boost: 5, beam: 8, summon: 8, weaken: 8, all: 10, range: 10 },
+  specials: { homing: 1, quick: 1, critical: 1, efficient: 3, random: 3, pierce: 3, split: 5, chain: 5, knockback: 5, pull: 8, absorb: 8, breaker: 8, delayed: 10, lasting: 10, pierceBurst: 10 },
+};
+
+export function spellUnlockLevel(category, id) {
+  return SPELL_UNLOCKS[category]?.[id] ?? 1;
+}
+
+export function spellPowerLimit(level) {
+  const safeLevel = Math.max(1, Math.floor(Number(level) || 1));
+  return Math.min(100, 60 + Math.floor((safeLevel - 1) / 5) * 10);
+}
 
 export function costForSpell(spell) {
   const attribute = spell.attributes.reduce((total, id) => total + (ATTRIBUTES.find((item) => item.id === id)?.cost ?? 1), 0);

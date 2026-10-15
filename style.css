@@ -423,3 +423,7 @@ body.battle-screen-open .view.battle-view.active { height:calc(100dvh - 74px); m
 @keyframes persistent-poison { 0% { opacity:0; transform:translate(-50%,12px) scale(.7); filter:hue-rotate(0); } 25%,72% { opacity:1; filter:hue-rotate(45deg); } 100% { opacity:0; transform:translate(-50%,-18px) scale(1.1); filter:hue-rotate(110deg); } }
 @keyframes persistent-linger { 0% { opacity:0; transform:translate(-50%,12px) rotate(-15deg) scale(.7); } 20%,75% { opacity:1; } 100% { opacity:0; transform:translate(-50%,-18px) rotate(20deg) scale(1.15); } }
 body.reduce-motion .shape-impact,body.reduce-motion .special-impact,body.reduce-motion .element-mote,body.reduce-motion .special-seal,body.reduce-motion .persistent-effect { animation:none !important; opacity:.85; }
+
+/* Spell forge progression: show locked choices without hiding future recipes. */
+.attribute-option.locked,.choice-option.locked { color:#706d68; border-color:rgba(202,175,120,.08); background:rgba(12,13,17,.65); cursor:not-allowed; }
+.unlock-level { color:var(--gold-dim); font:8px var(--mono); }

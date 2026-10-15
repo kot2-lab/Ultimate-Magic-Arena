@@ -1,7 +1,7 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, freshSettings, migratePlayer, requiredExp, synergyFor } from "./data.js?v=1.4.8";
-import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.4.8";
-import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.4.8";
-import { Soundscape } from "./audio.js?v=1.4.8";
+import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, freshSettings, migratePlayer, requiredExp, spellPowerLimit, spellUnlockLevel, synergyFor } from "./data.js?v=1.4.9";
+import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.4.9";
+import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.4.9";
+import { Soundscape } from "./audio.js?v=1.4.9";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -40,7 +40,7 @@ const tutorialSteps = [
   { view: "homeScreen", title: "ここが冒険の拠点", body: "ホームから対戦、魔法工房、魔法書庫へ進めます。まずは自分の魔法を整えてから、闘技場へ向かいましょう。" },
   { view: "magicScreen", title: "魔法工房で術を編む", body: "属性・形状・特殊効果・威力を組み合わせて魔法を作ります。威力を上げるとMP消費も増えるので、プレビューを見ながら調整しましょう。" },
   { view: "libraryScreen", title: "魔法書庫で準備する", body: `作った魔法は書庫に保存され、対戦で使えます。既存の魔法も編集できます。登録できる魔法は最大${MAX_SPELLS}個です。` },
-  { view: "cpuSelectScreen", title: "相手を選んで闘技場へ", body: "CPUは10段階。最初は初心者向けから試すのがおすすめです。勝敗に応じて経験値を獲得し、勝つとレーティングも上がります。" },
+  { view: "cpuSelectScreen", title: "相手を選んで闘技場へ", body: `CPUは${CPU_NAMES.length}段階。最初は初心者向けから試すのがおすすめです。勝敗に応じて経験値を獲得し、勝つとレーティングも上がります。` },
   { view: "helpScreen", title: "レーンを読んで行動する", body: "戦闘は左翼・中央・右翼の3レーン制です。狙うレーンを選び、魔法を使うか移動・パスを選択します。1ターン15秒、行動は1回です。" },
   { view: "settingsScreen", title: "冒険の記録は自動保存", body: "進行状況はこのブラウザーに自動保存されます。次回はタイトル画面の「冒険をつづける」から再開できます。別の端末への同期には対応していません。" },
 ];
@@ -131,13 +131,14 @@ function renderHome() {
 }
 
 function renderCpuList() {
-  const labels = ["初心者向け", "やや簡単", "標準", "少し手強い", "中級者向け", "上級者向け", "高難易度", "熟練者向け", "エキスパート", "最上級AI"];
+  const labels = ["初心者向け", "やや簡単", "標準", "少し手強い", "中級者向け", "中級上位", "上級者向け", "熟練者向け", "エキスパート", "頂点の守護者", "新たな試練", "強敵", "超高難度", "覇者級", "伝説級", "神話級", "英雄殺し", "天災級", "終焉級", "究極の覇者"];
   $("#cpuGrid").replaceChildren(...CPU_NAMES.map((name, index) => {
     const button = document.createElement("button");
     button.className = "cpu-card";
     button.type = "button";
     button.dataset.cpuLevel = String(index + 1);
-    button.innerHTML = `<span class="cpu-level">${String(index + 1).padStart(2, "0")}</span><span><strong></strong><small></small></span><span class="cpu-rank">${index < 3 ? "RISING" : index < 7 ? "VETERAN" : "MASTER"}</span>`;
+    const rank = index < 3 ? "RISING" : index < 7 ? "VETERAN" : index < 10 ? "MASTER" : index < 15 ? "ASCENDANT" : "LEGEND";
+    button.innerHTML = `<span class="cpu-level">${String(index + 1).padStart(2, "0")}</span><span><strong></strong><small></small></span><span class="cpu-rank">${rank}</span>`;
     $("strong", button).textContent = name;
     $("small", button).textContent = labels[index];
     return button;
@@ -146,22 +147,30 @@ function renderCpuList() {
 
 function renderForge() {
   $("#attributeChoices").replaceChildren(...ATTRIBUTES.map((attribute) => {
+    const selected = selectedAttributes.includes(attribute.id);
+    const requiredLevel = spellUnlockLevel("attributes", attribute.id);
+    const locked = requiredLevel > player.level && !selected;
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `attribute-option${selectedAttributes.includes(attribute.id) ? " selected" : ""}`;
+    button.className = `attribute-option${selected ? " selected" : ""}${locked ? " locked" : ""}`;
     button.dataset.attribute = attribute.id;
-    button.setAttribute("aria-pressed", String(selectedAttributes.includes(attribute.id)));
-    button.innerHTML = `<span class="attr-icon">${attribute.icon}</span><span class="attr-name"></span>`;
+    button.disabled = locked;
+    button.setAttribute("aria-pressed", String(selected));
+    button.innerHTML = `<span class="attr-icon">${locked ? "🔒" : attribute.icon}</span><span class="attr-name"></span>${locked ? `<small class="unlock-level">Lv.${requiredLevel}</small>` : ""}`;
     $(".attr-name", button).textContent = attribute.name;
     return button;
   }));
   $("#shapeChoices").replaceChildren(...SHAPES.map((shape) => {
+    const selected = selectedShape === shape.id;
+    const requiredLevel = spellUnlockLevel("shapes", shape.id);
+    const locked = requiredLevel > player.level && !selected;
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `choice-option${selectedShape === shape.id ? " selected" : ""}`;
+    button.className = `choice-option${selected ? " selected" : ""}${locked ? " locked" : ""}`;
     button.dataset.shape = shape.id;
-    button.setAttribute("aria-pressed", String(selectedShape === shape.id));
-    button.innerHTML = `<span class="choice-icon">${shape.icon}</span><span class="choice-name"></span>`;
+    button.disabled = locked;
+    button.setAttribute("aria-pressed", String(selected));
+    button.innerHTML = `<span class="choice-icon">${locked ? "🔒" : shape.icon}</span><span class="choice-name"></span>${locked ? `<small class="unlock-level">Lv.${requiredLevel}</small>` : ""}`;
     $(".choice-name", button).textContent = shape.name;
     return button;
   }));
@@ -170,10 +179,17 @@ function renderForge() {
   select.replaceChildren(...SPECIALS.map((special) => {
     const option = document.createElement("option");
     option.value = special.id;
-    option.textContent = `${special.icon} ${special.name}`;
+    const requiredLevel = spellUnlockLevel("specials", special.id);
+    option.disabled = requiredLevel > player.level && special.id !== previousSpecial;
+    option.textContent = `${special.icon} ${special.name}${requiredLevel > player.level ? `（Lv.${requiredLevel}で解放）` : ""}`;
     return option;
   }));
   select.value = SPECIALS.some((item) => item.id === previousSpecial) ? previousSpecial : "critical";
+  const currentSpell = editingSpellId && player.spells.find((spell) => spell.id === editingSpellId);
+  const powerLimit = Math.max(spellPowerLimit(player.level), currentSpell?.power ?? 0);
+  $("#spellPower").max = String(powerLimit);
+  const nextPowerLevel = Math.floor((player.level - 1) / 5) * 5 + 6;
+  $("#powerUnlockNote").textContent = `プレイヤー Lv.${player.level} · 最大威力 ${powerLimit}${currentSpell?.power > spellPowerLimit(player.level) ? "（所持魔法の威力を維持）" : ` · 次の強化 Lv.${nextPowerLevel}`}`;
   updatePreview();
   $("#spellName").focus({ preventScroll: true });
 }
@@ -212,6 +228,7 @@ function prepareNewSpell() {
   editingSpellId = null;
   $("#spellName").value = "新しい魔法";
   $("#spellPower").value = "24";
+  $("#spellPower").max = String(spellPowerLimit(player.level));
   $("#spellSpecial").value = "critical";
   selectedAttributes = ["fire"];
   selectedShape = "bullet";
@@ -222,10 +239,10 @@ function editSpell(spell) {
   editingSpellId = spell.id;
   $("#spellName").value = spell.name;
   $("#spellPower").value = String(spell.power);
+  $("#spellSpecial").value = spell.special;
   selectedAttributes = [...spell.attributes];
   selectedShape = spell.shape;
   renderForge();
-  $("#spellSpecial").value = spell.special;
   updatePreview();
   showView("magicScreen");
 }
@@ -396,7 +413,7 @@ function renderUnit(side, unit) {
   } else {
     $("#enemyName").textContent = unit.name;
     $("#enemyLevel").textContent = String(unit.level);
-    $("#enemyAvatar").textContent = ["♜", "♟", "♙", "♞", "♛", "♜", "♟", "♘", "♚", "♕"][battle.difficulty - 1];
+    $("#enemyAvatar").textContent = ["♜", "♟", "♙", "♞", "♛", "♜", "♟", "♘", "♚", "♕", "⚔", "♞", "☾", "♜", "♛", "♟", "♙", "✦", "♚", "♕"][battle.difficulty - 1];
   }
   $(`#${prefix}HPText`).textContent = String(unit.hp);
   $(`#${prefix}MaxHPText`).textContent = String(unit.maxHP);

@@ -1,11 +1,17 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, SHAPES, SPECIALS, STATUS, costForSpell, defaultSpells, synergyFor } from "./data.js?v=1.4.8";
+import { ATTRIBUTES, CPU_NAMES, LANES, MAX_CPU_LEVEL, SHAPES, SPECIALS, STATUS, costForSpell, defaultSpells, synergyFor } from "./data.js?v=1.4.9";
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const roll = (chance, random) => random() < chance;
 
 export function createBattle(player, cpuLevel = 1, random = Math.random) {
-  const difficulty = clamp(Number(cpuLevel) || 1, 1, 10);
+  const difficulty = clamp(Number(cpuLevel) || 1, 1, MAX_CPU_LEVEL);
   const enemyLevel = Math.max(1, player.level + difficulty - 1);
+  const hpBonus = difficulty === 1 ? 0 : Math.floor(Math.pow(difficulty - 1, 1.35) * 1.7);
+  const mpBonus = difficulty === 1 ? 0 : Math.floor(Math.pow(difficulty - 1, 1.15) * 0.75);
+  const enemyMaxHP = difficulty === 1 ? 90 : 100 + difficulty * 14 + hpBonus;
+  const enemyMaxMP = difficulty === 1 ? 75 : 70 + difficulty * 5 + mpBonus;
+  const enemyStartingMP = difficulty === 1 ? 25 : Math.min(enemyMaxMP, 30 + difficulty * 5 + Math.floor((difficulty - 1) * 0.5));
+  const spellPowerScale = difficulty === 1 ? 1 : 1 + (difficulty - 1) * 0.025;
   return {
     difficulty,
     turn: 1,
@@ -21,12 +27,12 @@ export function createBattle(player, cpuLevel = 1, random = Math.random) {
     },
     enemy: {
       name: CPU_NAMES[difficulty - 1], level: enemyLevel,
-      hp: difficulty === 1 ? 90 : 100 + difficulty * 14,
-      maxHP: difficulty === 1 ? 90 : 100 + difficulty * 14,
-      mp: difficulty === 1 ? 25 : Math.min(70 + difficulty * 5, 30 + difficulty * 5),
-      maxMP: 70 + difficulty * 5, mpRegen: difficulty === 1 ? 4 : 5 + Math.floor(difficulty / 4),
+      hp: enemyMaxHP,
+      maxHP: enemyMaxHP,
+      mp: enemyStartingMP,
+      maxMP: enemyMaxMP, mpRegen: difficulty === 1 ? 4 : 5 + Math.floor((difficulty - 1) / 3),
       lane: LANES[Math.floor(random() * LANES.length)], statuses: [], buffs: [], barriers: 0,
-      spells: defaultSpells(),
+      spells: defaultSpells().map((spell) => ({ ...spell, power: Math.round(spell.power * spellPowerScale) })),
     },
     log: ["魔法陣が戦場を囲む。戦いの始まりだ。"],
   };
@@ -239,12 +245,12 @@ function chooseEnemyAction(battle, random) {
   const player = battle.player;
   const allowed = enemy.spells.filter((spell) => enemy.mp >= costForSpell(spell));
   const sorted = allowed.map((spell) => ({ spell, score: scoreSpell(spell, battle, "enemy") })).sort((a, b) => b.score - a.score);
-  const quality = difficulty === 1 ? 0.18 : 0.36 + difficulty * 0.057;
+  const quality = difficulty === 1 ? 0.18 : Math.min(0.97, 0.36 + difficulty * 0.057);
   if (sorted.length && random() < quality) return { type: "spell", spell: sorted[0].spell, targetLane: player.lane };
   if (difficulty === 1 && sorted.length && random() >= 0.55) {
     return { type: "move", lane: LANES[Math.floor(random() * LANES.length)] };
   }
-  if (enemy.lane !== player.lane && difficulty >= 4 && random() < 0.4 + difficulty * 0.04) return { type: "move", lane: player.lane };
+  if (enemy.lane !== player.lane && difficulty >= 4 && random() < Math.min(0.93, 0.4 + difficulty * 0.04)) return { type: "move", lane: player.lane };
   if (sorted.length && random() < 0.7) return { type: "spell", spell: sorted[Math.floor(random() * Math.min(sorted.length, 3))].spell, targetLane: player.lane };
   return { type: "move", lane: LANES[Math.floor(random() * LANES.length)] };
 }
