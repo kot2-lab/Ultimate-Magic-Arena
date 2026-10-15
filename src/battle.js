@@ -128,7 +128,8 @@ export function castSpell(battle, casterSide, spell, { targetLane, random = Math
   if (special.id === "pierce" || special.id === "split" || special.id === "chain") power *= 1.14;
   if (special.id === "pierceBurst") power *= 1.22;
   if (special.id === "random") power *= 0.72 + random() * 0.56;
-  if (special.id === "critical" && roll(0.28, random)) power *= 1.75;
+  const critical = special.id === "critical" && roll(0.28, random);
+  if (critical) power *= 1.75;
 
   let message = `${getAttribute(spell.attributes[0])?.icon ?? "✦"} ${caster.name}の「${spell.name}」`;
   let damage = 0;
@@ -136,7 +137,7 @@ export function castSpell(battle, casterSide, spell, { targetLane, random = Math
     const amount = Math.round(power * 1.35);
     caster.hp = Math.min(caster.maxHP, caster.hp + amount);
     if (spell.attributes.includes("light")) caster.statuses = [];
-    message += `。HPが${amount}回復した。`;
+    message += `。${critical ? "クリティカル回復！" : ""}HPが${amount}回復した。`;
   } else if (shape.kind === "barrier") {
     refreshBuff(caster, "barrier", 2, 0.45);
     caster.barriers = Math.max(caster.barriers, 1);
@@ -171,7 +172,7 @@ export function castSpell(battle, casterSide, spell, { targetLane, random = Math
     if (shape.id === "trap") applyStatus(target, "bind", 2);
     if (shape.id === "beam" || special.id === "lasting") refreshBuff(target, "lingering", 2, Math.ceil(base * 0.22));
     if (special.id === "split" && target.hp > 0) applyStatus(target, status ?? "blind", 1);
-    message += `。${damage}ダメージ${status ? `、${STATUS.find((item) => item.id === status)?.name}を付与` : ""}。`;
+    message += `。${critical ? "クリティカル！" : ""}${damage}ダメージ${status ? `、${STATUS.find((item) => item.id === status)?.name}を付与` : ""}。`;
   }
   addLog(battle, message);
   if (target.buffs.some((buff) => buff.type === "weakened")) power *= 1.05;

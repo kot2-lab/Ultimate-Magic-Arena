@@ -89,6 +89,22 @@ test("damage spells respect barriers and low-level battle starts with a valid tu
   assert.ok(battle.enemy.hp < before);
 });
 
+test("critical hits are called out in the battle log, while missed critical spells are not", () => {
+  const battle = createBattle(freshPlayer(), 1, silentRandom);
+  const spell = { attributes: ["neutral"], shape: "bullet", special: "critical", power: 30 };
+  battle.player.lane = "center";
+  battle.enemy.lane = "center";
+  castSpell(battle, "player", spell, { targetLane: "center", random: () => 0 });
+  assert.match(battle.log[0], /クリティカル！/);
+
+  const missedBattle = createBattle(freshPlayer(), 1, silentRandom);
+  missedBattle.player.lane = "left";
+  missedBattle.enemy.lane = "right";
+  castSpell(missedBattle, "player", spell, { targetLane: "right", random: () => 0 });
+  assert.match(missedBattle.log[0], /届かなかった/);
+  assert.doesNotMatch(missedBattle.log[0], /クリティカル/);
+});
+
 test("beginner CPU tuning does not change the next difficulty", () => {
   const battle = createBattle(freshPlayer(), 2, silentRandom);
   assert.equal(battle.enemy.maxHP, 128);

@@ -14,6 +14,8 @@ const settings = loadSettings();
 let battle = null;
 let battleTimer = null;
 let battleResultTimer = null;
+let battleActionTimer = null;
+let battleAnimationLocked = false;
 let selectedAttributes = ["fire"];
 let selectedShape = "bullet";
 let selectedTargetLane = "center";
@@ -294,17 +296,17 @@ function renderBattle() {
     const icon = ATTRIBUTES.find((item) => item.id === spell.attributes[0])?.icon || "✦";
     button.innerHTML = `<span class="battle-spell-icon">${icon}</span><span class="battle-spell-name"></span><span class="battle-spell-cost">${cost}MP</span>`;
     $(".battle-spell-name", button).textContent = spell.name;
-    button.disabled = battle.player.mp < cost || battle.phase !== "player" || battle.player.statuses.some((status) => status.id === "silence");
+    button.disabled = battle.player.mp < cost || battle.phase !== "player" || battleAnimationLocked || battle.player.statuses.some((status) => status.id === "silence");
     return button;
   }));
   const blocked = battle.player.statuses.some((status) => ["sleep"].includes(status.id));
-  $("#actionHint").textContent = blocked ? "状態異常で行動できません" : "1ターンに1行動";
+  $("#actionHint").textContent = battleAnimationLocked ? `${battle.enemy.name}のターン · 相手の動きを見よう` : blocked ? "状態異常で行動できません" : "1ターンに1行動";
   $$("[data-move-lane]").forEach((button) => {
     button.classList.toggle("selected", button.dataset.moveLane === battle.player.lane);
-    button.disabled = battle.phase !== "player" || battle.player.lane === button.dataset.moveLane || battle.player.statuses.some((status) => status.id === "bind");
+    button.disabled = battle.phase !== "player" || battleAnimationLocked || battle.player.lane === button.dataset.moveLane || battle.player.statuses.some((status) => status.id === "bind");
   });
-  $$("[data-target-lane]").forEach((button) => button.classList.toggle("selected", button.dataset.targetLane === selectedTargetLane));
-  $("#passTurnBtn").disabled = battle.phase !== "player";
+  $$("[data-target-lane]").forEach((button) => { button.classList.toggle("selected", button.dataset.targetLane === selectedTargetLane); button.disabled = battle.phase !== "player" || battleAnimationLocked; });
+  $("#passTurnBtn").disabled = battle.phase !== "player" || battleAnimationLocked;
   $("#retreatBtn").disabled = Boolean(battle.result);
   updateTimerDisplay();
 }
@@ -372,6 +374,9 @@ function renderUnit(side, unit) {
 
 function startBattle(cpuLevel) {
   if (battleResultTimer) window.clearTimeout(battleResultTimer);
+  if (battleActionTimer) window.clearTimeout(battleActionTimer);
+  battleActionTimer = null;
+  battleAnimationLocked = false;
   battleResultTimer = null;
   sound.unlock();
   sound.effect("select");
@@ -382,14 +387,14 @@ function startBattle(cpuLevel) {
   renderBattle();
   stopBattleTimer();
   battleTimer = window.setInterval(() => {
-    if (!battle || battle.phase !== "player" || battle.result) return;
+    if (!battle || battle.phase !== "player" || battleAnimationLocked || battle.result) return;
     battle.secondsLeft -= 1;
     updateTimerDisplay();
     if (battle.secondsLeft <= 0) {
       const before = { playerHP: battle.player.hp, enemyHP: battle.enemy.hp, playerLane: battle.player.lane, enemyLane: battle.enemy.lane, log: [...battle.log] };
       expirePlayerTurn(battle);
       animateBattleEvents(before, { type: "pass" });
-      afterAction();
+      afterAction(before);
     }
   }, 1000);
 }
@@ -403,11 +408,11 @@ function updateTimerDisplay() {
   if (!battle) return;
   $("#turnTimer").textContent = String(Math.max(0, battle.secondsLeft));
   $(".battle-timer").classList.toggle("urgent", battle.secondsLeft <= 5);
-  $(".timer-caption").textContent = battle.phase === "enemy" ? "CPU TURN" : "YOUR TURN";
+  $(".timer-caption").textContent = battleAnimationLocked ? "戦況確認中" : battle.phase === "enemy" ? "CPU TURN" : "YOUR TURN";
 }
 
 function doPlayerAction(action, soundKind = "magic") {
-  if (!battle || battle.phase !== "player") return;
+  if (!battle || battle.phase !== "player" || battleAnimationLocked) return;
   const before = {
     playerHP: battle.player.hp,
     enemyHP: battle.enemy.hp,
@@ -418,8 +423,8 @@ function doPlayerAction(action, soundKind = "magic") {
   const result = resolvePlayerAction(battle, action);
   if (!result.ok) { toast(result.message, true); return; }
   sound.effect(soundKind);
-  animateBattleEvents(before, action);
-  afterAction();
+  animateBattleEvents(before, action, result);
+  afterAction(before);
 }
 
 function newBattleLogEntries(previousLog) {
@@ -433,21 +438,90 @@ function newBattleLogEntries(previousLog) {
   return battle.log.slice(0, 6);
 }
 
-function animateBattleEvents(before, action) {
+function animateBattleEvents(before, action, playerResult = null) {
   const freshLogs = newBattleLogEntries(before.log);
   const playerSpell = action.type === "spell" && freshLogs.some((entry) => entry.includes(`${battle.player.name}の「${action.spell.name}」`));
-  if (playerSpell) animateSpell(action.spell, "player");
+  const playerSpellLog = playerSpell ? freshLogs.find((entry) => entry.includes(`${battle.player.name}の「${action.spell.name}」`)) : "";
+  if (playerSpell) {
+    const shape = SHAPES.find((item) => item.id === action.spell.shape);
+    if (playerSpellLog.includes("クリティカル回復")) showBattleAnnouncement("CRITICAL HEAL!", `回復 · ${action.spell.name}`, "heal");
+    else if (playerSpellLog.includes("クリティカル")) showBattleAnnouncement(`CRITICAL! −${playerResult?.damage || 0}`, `クリティカル · ${action.spell.name}`, "critical");
+    else if (playerResult?.hit === false) showBattleAnnouncement("MISS", `届かなかった · ${shape?.name || "魔法"} · ${action.spell.name}`, "miss");
+    else if (shape?.kind === "heal") showBattleAnnouncement(`回復！ +${playerSpellLog.match(/HPが(\d+)回復/)?.[1] || 0}`, `${action.spell.name} · HPを回復`, "heal");
+    else if (shape?.kind === "damage" && playerResult?.damage > 0) showBattleAnnouncement("命中！", `${shape.name} · ${action.spell.name} · −${playerResult.damage}`, "attack");
+    else showBattleAnnouncement("魔法発動！", `${shape?.name || "魔法"} · ${action.spell.name}`, "attack");
+    animateSpell(action.spell, "player");
+  } else if (action.type === "move") {
+    showBattleAnnouncement("移動！", `レーンを移動 · ${LANE_NAMES[action.lane]}`, "move");
+  } else if (action.type === "pass") {
+    showBattleAnnouncement("様子を見る", "魔力を整え、次の一手へ", "move");
+  }
   const enemySpell = battle.enemy.spells.find((spell) => freshLogs.some((entry) => entry.includes(`${battle.enemy.name}の「${spell.name}」`)));
-  if (enemySpell) animateSpell(enemySpell, "enemy");
-
+  const enemySpellLog = enemySpell ? freshLogs.find((entry) => entry.includes(`${battle.enemy.name}の「${enemySpell.name}」`)) : "";
   const playerDelta = before.playerHP - battle.player.hp;
   const enemyDelta = before.enemyHP - battle.enemy.hp;
-  if (playerDelta > 0) animateImpact("player", playerDelta);
-  else if (playerDelta < 0) animateImpact("player", -playerDelta, true);
-  if (enemyDelta > 0) animateImpact("enemy", enemyDelta);
-  else if (enemyDelta < 0) animateImpact("enemy", -enemyDelta, true);
   if (before.playerLane !== battle.player.lane) animateMovement("player");
-  if (before.enemyLane !== battle.enemy.lane) animateMovement("enemy");
+  const enemyBeatDelay = settings.motion ? (playerSpell ? 1350 : 750) : 80;
+  if (enemyDelta > 0) window.setTimeout(() => revealBattleImpact("enemy", enemyDelta), settings.motion && playerSpell ? 820 : 100);
+  else if (enemyDelta < 0) window.setTimeout(() => revealBattleImpact("enemy", -enemyDelta, true), 650);
+  if (settings.motion && enemyBeatDelay > 500) {
+    window.setTimeout(() => showBattleAnnouncement(`${battle.enemy.name}のターン`, "相手が次の一手を選ぶ…", "enemy"), enemyBeatDelay - 500);
+  }
+  window.setTimeout(() => {
+    if (enemySpell) {
+      if (enemySpellLog.includes("クリティカル回復")) showBattleAnnouncement("相手 CRITICAL HEAL!", `${enemySpell.name} · 相手が回復`, "enemy");
+      else if (enemySpellLog.includes("クリティカル")) showBattleAnnouncement(`相手 CRITICAL! −${playerDelta}`, `${enemySpell.name} · クリティカル`, "critical");
+      else if (enemySpellLog.includes("届かなかった")) showBattleAnnouncement("回避！", `相手の魔法 · ${enemySpell.name}`, "move");
+      else if (playerDelta > 0) showBattleAnnouncement("被弾！", `${battle.enemy.name}の攻撃 · ${enemySpell.name} · −${playerDelta}`, "damage");
+      else if (enemyDelta < 0) showBattleAnnouncement(`CPU回復！ +${-enemyDelta}`, `相手の魔法 · ${enemySpell.name}`, "enemy");
+      else showBattleAnnouncement("相手の行動", `CPUの魔法 · ${enemySpell.name}`, "enemy");
+      animateSpell(enemySpell, "enemy");
+    } else if (before.enemyLane !== battle.enemy.lane) {
+      showBattleAnnouncement("相手が移動！", `${battle.enemy.name} · ${LANE_NAMES[battle.enemy.lane]}へ`, "enemy");
+    } else if (playerDelta > 0) {
+      showBattleAnnouncement("被弾！", `状態異常などのダメージ · −${playerDelta}`, "damage");
+    }
+    if (before.enemyLane !== battle.enemy.lane) animateMovement("enemy");
+    if (playerDelta > 0) window.setTimeout(() => revealBattleImpact("player", playerDelta), enemySpell && settings.motion ? 820 : 100);
+    else if (playerDelta < 0) window.setTimeout(() => revealBattleImpact("player", -playerDelta, true), 100);
+  }, enemyBeatDelay);
+}
+
+function showBattleAnnouncement(title, detail, kind = "attack") {
+  const arena = $("#battleArena");
+  let banner = $("#battleAnnouncement", arena);
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.id = "battleAnnouncement";
+    banner.className = "battle-announcement";
+    banner.setAttribute("aria-live", "polite");
+    banner.setAttribute("aria-atomic", "true");
+    arena.append(banner);
+  }
+  banner.className = `battle-announcement ${kind}`;
+  banner.replaceChildren();
+  const main = document.createElement("strong");
+  main.textContent = title;
+  const sub = document.createElement("span");
+  sub.textContent = detail;
+  banner.append(main, sub);
+  banner.classList.remove("active");
+  void banner.offsetWidth;
+  banner.classList.add("active");
+  window.clearTimeout(banner.announcementTimer);
+  banner.announcementTimer = window.setTimeout(() => banner.classList.remove("active"), 1450);
+}
+
+function updateCombatHP(side) {
+  const unit = battle[side];
+  const prefix = side === "player" ? "player" : "enemy";
+  $(`#${prefix}HPText`).textContent = String(unit.hp);
+  $(`#${prefix}HPBar`).style.width = `${Math.max(0, unit.hp / unit.maxHP * 100)}%`;
+}
+
+function revealBattleImpact(side, amount, healing = false) {
+  updateCombatHP(side);
+  animateImpact(side, amount, healing);
 }
 
 function getBattleAvatar(side) {
@@ -463,6 +537,7 @@ function animateMovement(side) {
 function animateImpact(side, amount, healing = false) {
   const avatar = getBattleAvatar(side);
   if (!avatar) return;
+  sound.effect(healing ? "heal" : "hit");
   avatar.classList.remove("is-hit", "is-healing");
   void avatar.offsetWidth;
   avatar.classList.add(healing ? "is-healing" : "is-hit");
@@ -473,12 +548,29 @@ function animateImpact(side, amount, healing = false) {
   window.setTimeout(() => { number.remove(); avatar.classList.remove("is-hit", "is-healing"); }, 820);
 }
 
-function afterAction() {
+function afterAction(before) {
   if (!battle) return;
+  battleAnimationLocked = true;
   renderBattle();
+  for (const side of ["player", "enemy"]) {
+    const hp = side === "player" ? before.playerHP : before.enemyHP;
+    const unit = battle[side];
+    const prefix = side === "player" ? "player" : "enemy";
+    $(`#${prefix}HPText`).textContent = String(hp);
+    $(`#${prefix}HPBar`).style.width = `${Math.max(0, hp / unit.maxHP * 100)}%`;
+  }
   if (battle.result) {
     stopBattleTimer();
-    battleResultTimer = window.setTimeout(finishBattle, 820);
+    battleResultTimer = window.setTimeout(finishBattle, settings.motion ? 3000 : 450);
+  } else {
+    battleActionTimer = window.setTimeout(() => {
+      battleActionTimer = null;
+      battleAnimationLocked = false;
+      $("#battleEffect").classList.remove("active");
+      $("#battleAnnouncement")?.classList.remove("active");
+      updateTimerDisplay();
+      renderBattle();
+    }, settings.motion ? 3000 : 450);
   }
 }
 
@@ -486,6 +578,7 @@ function animateSpell(spell, side) {
   const attribute = ATTRIBUTES.find((item) => item.id === spell.attributes[0]);
   const shape = SHAPES.find((item) => item.id === spell.shape);
   const effect = $("#battleEffect");
+  effect.classList.add("active");
   const projectile = document.createElement("span");
   const selfTarget = ["heal", "barrier", "boost", "self", "summon"].includes(shape?.kind);
   projectile.className = `spell-projectile ${side === "player" ? "from-player" : "from-enemy"}${selfTarget ? " self-target" : ""}`;
@@ -495,14 +588,21 @@ function animateSpell(spell, side) {
   glyph.textContent = shape?.icon || "✦";
   projectile.append(glyph);
   effect.append(projectile);
+  const callout = document.createElement("span");
+  callout.className = `spell-callout ${side === "player" ? "for-player" : "for-enemy"}`;
+  callout.textContent = `${side === "player" ? "あなたの魔法" : `${battle.enemy.name}の魔法`} · ${spell.name}`;
+  effect.append(callout);
   const avatar = getBattleAvatar(side);
   avatar?.style.setProperty("--spell-color", attribute?.color || "var(--gold-bright)");
   avatar?.classList.add("is-casting");
-  window.setTimeout(() => { projectile.remove(); avatar?.classList.remove("is-casting"); avatar?.style.removeProperty("--spell-color"); }, 760);
+  window.setTimeout(() => { projectile.remove(); callout.remove(); avatar?.classList.remove("is-casting"); avatar?.style.removeProperty("--spell-color"); }, 1200);
 }
 
 function finishBattle() {
   if (battleResultTimer) window.clearTimeout(battleResultTimer);
+  if (battleActionTimer) window.clearTimeout(battleActionTimer);
+  battleActionTimer = null;
+  battleAnimationLocked = false;
   battleResultTimer = null;
   stopBattleTimer();
   const outcome = battle.result;
