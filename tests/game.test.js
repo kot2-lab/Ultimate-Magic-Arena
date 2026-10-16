@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { ATTRIBUTES, CPU_NAMES, MAX_CPU_LEVEL, MAX_SPELLS, SHAPES, SPECIALS, costForSpell, defaultSpells, freshPlayer, migratePlayer, requiredExp, spellPowerLimit, spellUnlockLevel, synergyFor } from "../src/data.js";
 import { awardExperience, castSpell, createBattle, moveUnit, resolvePlayerAction } from "../src/battle.js";
 import { backupProgress, loadProgress, saveProgress } from "../src/storage.js";
@@ -36,6 +37,22 @@ test("spell-forge options and power ceiling unlock gradually by player level", (
   assert.equal(spellPowerLimit(6), 70);
   assert.equal(spellPowerLimit(11), 80);
   assert.equal(spellPowerLimit(21), 100);
+});
+
+test("version library contains playable snapshots with isolated save keys", () => {
+  const versions = ["1.0.0", "1.1.0", "1.1.1", "1.2.0", "1.3.0", "1.4.0", "1.4.1", "1.4.2", "1.4.3", "1.4.4", "1.4.5", "1.4.6", "1.4.7", "1.4.8", "1.4.9", "1.5.0"];
+  const archive = readFileSync(new URL("../versions/index.html", import.meta.url), "utf8");
+  for (const version of versions) {
+    const pageUrl = new URL(`../versions/v${version}/index.html`, import.meta.url);
+    const game = readFileSync(pageUrl, "utf8");
+    const data = readFileSync(new URL(`../versions/v${version}/src/data.js`, import.meta.url), "utf8");
+    const displayVersion = version.split(".").slice(0, 2).join(".");
+    assert.ok(archive.includes(`href="v${version}/"`), `${version} is listed`);
+    assert.ok(game.includes(`href="../">過去のバージョン`), `${version} can return to the archive`);
+    assert.ok(game.includes(`version-number">${displayVersion}</span>`), `${version} shows the correct title version`);
+    assert.ok(data.includes(`SAVE_KEY = "umaSave:v${version}"`), `${version} has a separate save key`);
+    assert.ok(data.includes(`SETTINGS_KEY = "umaSettings:v${version}"`), `${version} has separate settings`);
+  }
 });
 
 test("save migration preserves zero MP and clamps invalid values", () => {

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#11131a">
+  <meta name="description" content="Ultimate Magic Arena（仮）の過去バージョンを選んでプレイできます。">
+  <title>バージョン図書館 — Ultimate Magic Arena（仮）</title>
+  <style>
+    :root { color-scheme: dark; --gold:#c7a86b; --ink:#11131a; --panel:#1a1d25; --line:rgba(202,175,120,.23); --cream:#eee8dc; --muted:#aaa69d; }
+    * { box-sizing:border-box; }
+    body { min-height:100vh; margin:0; color:var(--cream); background:radial-gradient(ellipse at 50% 0%,#2b2b2d 0,#17191f 44%,var(--ink) 100%); font-family:"Yu Mincho","Hiragino Mincho ProN",serif; }
+    main { width:min(1040px,100%); margin:auto; padding:52px 24px 72px; }
+    .back { display:inline-block; color:var(--gold); text-decoration:none; font-size:14px; }
+    .eyebrow { margin:42px 0 10px; color:var(--gold); font:11px/1.5 "DM Mono",monospace; letter-spacing:.28em; }
+    h1 { margin:0; font-size:clamp(32px,7vw,58px); font-weight:500; letter-spacing:.1em; }
+    .intro { max-width:680px; margin:16px 0 28px; color:#c6c0b5; line-height:1.9; }
+    .notice { display:flex; gap:14px; align-items:flex-start; margin:24px 0 38px; padding:17px 19px; border:1px solid var(--line); background:rgba(26,29,37,.72); color:#c9c2b4; line-height:1.7; font-size:13px; }
+    .notice b { color:var(--gold); font-size:18px; }
+    .current { display:flex; align-items:center; justify-content:space-between; gap:18px; margin:0 0 26px; padding:22px; border:1px solid rgba(202,175,120,.48); background:linear-gradient(110deg,rgba(93,74,39,.25),rgba(26,29,37,.88)); }
+    .current small,.card small { display:block; color:var(--muted); font:10px "DM Mono",monospace; letter-spacing:.08em; }
+    .current h2 { margin:7px 0 0; font-size:21px; }
+    .button { display:inline-flex; min-height:46px; align-items:center; justify-content:center; gap:12px; padding:0 18px; color:#161616; background:var(--gold); text-decoration:none; font-weight:700; white-space:nowrap; }
+    .section-title { margin:40px 0 16px; color:var(--gold); font-size:17px; letter-spacing:.1em; }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .card { display:flex; min-height:158px; flex-direction:column; align-items:flex-start; padding:18px; border:1px solid var(--line); background:rgba(26,29,37,.8); text-decoration:none; color:inherit; transition:transform .16s,border-color .16s,background .16s; }
+    .card:hover,.card:focus-visible { transform:translateY(-2px); border-color:var(--gold); background:#22242b; outline:none; }
+    .card .version { margin:9px 0 7px; color:var(--cream); font-size:22px; }
+    .card p { margin:0; color:#aaa69d; font-size:13px; line-height:1.65; }
+    .card .play { margin-top:auto; padding-top:14px; color:var(--gold); font-size:12px; }
+    footer { margin-top:48px; padding-top:18px; border-top:1px solid var(--line); color:var(--muted); font-size:12px; }
+    @media(max-width:720px) { main { padding:34px 16px 52px; }.eyebrow { margin-top:34px; }.grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.current { align-items:flex-start; flex-direction:column; } }
+    @media(max-width:440px) { .grid { grid-template-columns:1fr; }.card { min-height:130px; }.button { width:100%; } }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="../">← Ultimate Magic Arena（仮）</a>
+    <p class="eyebrow">THE ARCANE ARCHIVES</p>
+    <h1>バージョン図書館</h1>
+    <p class="intro">これまでのUltimate Magic Arena（仮）を、各バージョン当時の姿で遊べます。遊び比べたいバージョンを選んでください。</p>
+    <aside class="notice"><b>✦</b><span>各バージョンの冒険データは別々に保存され、現在の最新版やほかのバージョンのデータには影響しません。古いバージョンには、現在の機能や修正が含まれない場合があります。</span></aside>
+    <section class="current" aria-labelledby="currentTitle"><div><small>最新の冒険はこちら</small><h2 id="currentTitle">現在公開中のバージョン</h2></div><a class="button" href="../">最新版で遊ぶ <span aria-hidden="true">→</span></a></section>
+    <h2 class="section-title">過去のバージョン</h2>
+    <div class="grid">
+      <a class="card" href="v1.5.0/"><small>現在の最新版</small><span class="version">Ver.1.5.0</span><p>各バージョンを個別のURLでプレイ</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.4.9/"><small>CPU20段階・魔法成長</small><span class="version">Ver.1.4.9</span><p>CPU20段階・レベルに応じた魔法解放</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.4.8/"><small>演出の修正</small><span class="version">Ver.1.4.8</span><p>ゲーム内設定に合わせて魔法演出を再生</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.4.7/"><small>大胆な魔法演出</small><span class="version">Ver.1.4.7</span><p>属性・形状・特殊効果の演出、固定戦闘画面</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.4.6/"><small>初回戦闘ガイド</small><span class="version">Ver.1.4.6</span><p>操作案内とスマートフォン操作の改善</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.4.5/"><small>セーブ復元</small><span class="version">Ver.1.4.5</span><p>バックアップから冒険データを復元</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.4.4/"><small>戦闘画面の改善</small><span class="version">Ver.1.4.4</span><p>PCの戦況表示と行動の確認・取り消し</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.4.3/"><small>感想フォーム</small><span class="version">Ver.1.4.3</span><p>テストプレイのアンケートを追加</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.4.2/"><small>画面遷移の修正</small><span class="version">Ver.1.4.2</span><p>タイトルからの戻り先を正しく修正</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.4.1/"><small>ナビゲーション修正</small><span class="version">Ver.1.4.1</span><p>遊び方・更新履歴からタイトルへ戻る操作を改善</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.4.0/"><small>戦闘フィードバック</small><span class="version">Ver.1.4.0</span><p>戦闘演出と更新履歴を追加</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.3.0/"><small>CPU調整</small><span class="version">Ver.1.3.0</span><p>初心者向けCPUの難易度を調整</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.2.0/"><small>戦闘UIと演出</small><span class="version">Ver.1.2.0</span><p>三レーン表示、魔法・被弾・回復エフェクト</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.1.1/"><small>魔法書庫の拡張</small><span class="version">Ver.1.1.1</span><p>登録できる魔法を20個に拡張</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.1.0/"><small>冒険の案内</small><span class="version">Ver.1.1.0</span><p>プロフィール設定、チュートリアル、続きから</p><span class="play">このバージョンで遊ぶ →</span></a>
+      <a class="card" href="v1.0.0/"><small>最初の正式版</small><span class="version">Ver.1.0.0</span><p>魔法を創り、CPUと戦う最初の公開版</p><span class="play">このバージョンで遊ぶ →</span></a>
+    </div>
+    <footer>Ultimate Magic Arena（仮） · バージョン図書館</footer>
+  </main>
+</body>
+</html>
