@@ -23,6 +23,22 @@ test("spell costs and paired attribute synergy stay within builder constraints",
   const spell = { attributes: ["fire", "wind"], shape: "bullet", special: "efficient", power: 24 };
   assert.equal(synergyFor(spell.attributes).name, "陽炎");
   assert.ok(costForSpell(spell) > 0);
+  const strong = { attributes: ["fire"], shape: "bullet", special: "quick", power: 100 };
+  assert.equal(costForSpell(strong), 25);
+  assert.ok(costForSpell(strong) - costForSpell({ ...strong, power: 20 }) >= 15);
+});
+
+test("casting charges the full spell cost before end-of-turn MP regeneration", () => {
+  const player = freshPlayer();
+  const battle = createBattle(player, 1, silentRandom);
+  battle.player.mp = 60;
+  battle.enemy.spells = [];
+  battle.enemy.hp = battle.enemy.maxHP = 300;
+  battle.player.lane = battle.enemy.lane = "center";
+  const spell = { id: "cost-check", name: "大魔法", attributes: ["fire"], shape: "bullet", special: "quick", power: 100 };
+  const cost = costForSpell(spell);
+  assert.equal(resolvePlayerAction(battle, { type: "spell", spell, targetLane: "center" }, silentRandom).ok, true);
+  assert.equal(battle.player.mp, 60 - cost + battle.player.mpRegen);
 });
 
 test("spell-forge options and power ceiling unlock gradually by player level", () => {
@@ -62,6 +78,8 @@ test("save migration preserves zero MP and clamps invalid values", () => {
   assert.equal(player.level, 999);
   assert.equal(player.tutorialCompleted, false);
   assert.equal(migratePlayer({ name: "既存プレイヤー" }).tutorialCompleted, true);
+  assert.equal(migratePlayer({ name: "既存プレイヤー" }).speed, 100);
+  assert.equal(migratePlayer({ speed: 999 }).speed, 200);
   assert.equal(migratePlayer({ name: "既存プレイヤー" }).battleControlsTutorialCompleted, false);
   assert.equal(migratePlayer({ ...freshPlayer(), battleControlsTutorialCompleted: true }).battleControlsTutorialCompleted, true);
 });
@@ -92,6 +110,7 @@ test("lane movement validates destination and bind prevents movement", () => {
 test("a delayed spell resolves after the enemy action and charges MP only once", () => {
   const battle = createBattle(freshPlayer(), 1, silentRandom);
   battle.enemy.spells = [];
+  battle.enemy.statuses.push({ id: "sleep", turns: 2 });
   battle.enemy.hp = battle.enemy.maxHP = 300;
   battle.enemy.lane = "right";
   battle.player.lane = "right";
@@ -120,6 +139,30 @@ test("damage spells respect barriers and low-level battle starts with a valid tu
   const before = battle.enemy.hp;
   assert.equal(castSpell(battle, "player", spell, { targetLane: "center", random: silentRandom }).ok, true);
   assert.ok(battle.enemy.hp < before);
+});
+
+test("battle order follows speed and enemy movement always changes lanes", () => {
+  const battle = createBattle(freshPlayer(), 1, silentRandom);
+  assert.equal(battle.player.speed, 100);
+  assert.equal(battle.enemy.speed, 92);
+  battle.enemy.speed = 130;
+  const result = resolvePlayerAction(battle, { type: "pass" }, silentRandom);
+  assert.deepEqual(result.actionOrder, ["enemy", "player"]);
+  assert.equal(result.enemyAction.type, "move");
+  assert.notEqual(result.enemyAction.from, result.enemyAction.to);
+  assert.match(battle.log[0], /行動順：.*素早さ 130.*素早さ 100/);
+
+  const playerFirst = createBattle(freshPlayer(), 1, silentRandom);
+  playerFirst.enemy.speed = 80;
+  assert.deepEqual(resolvePlayerAction(playerFirst, { type: "pass" }, silentRandom).actionOrder, ["player", "enemy"]);
+});
+
+test("forced lane movement from knockback is described in the battle result", () => {
+  const battle = createBattle(freshPlayer(), 1, silentRandom);
+  battle.player.lane = battle.enemy.lane = "center";
+  const spell = { id: "push-test", name: "吹き飛ばし", attributes: ["neutral"], shape: "bullet", special: "knockback", power: 15 };
+  const result = castSpell(battle, "player", spell, { targetLane: "center", random: silentRandom });
+  assert.match(result.message, /中央から右翼へ押し出された/);
 });
 
 test("critical hits are called out in the battle log, while missed critical spells are not", () => {

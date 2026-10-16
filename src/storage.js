@@ -1,4 +1,4 @@
-import { freshPlayer, freshSettings, migratePlayer, SAVE_KEY, SETTINGS_KEY } from "./data.js?v=1.5.0";
+import { freshPlayer, freshSettings, migratePlayer, SAVE_KEY, SETTINGS_KEY } from "./data.js?v=1.5.1";
 
 function safeParse(raw) {
   try { return JSON.parse(raw); } catch { return null; }

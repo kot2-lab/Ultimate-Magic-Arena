@@ -1,4 +1,4 @@
-export const VERSION = "1.5.0";
+export const VERSION = "1.5.1";
 export const MAX_SPELLS = 20;
 export const SAVE_KEY = "umaSave";
 export const SETTINGS_KEY = "umaSettings";
@@ -111,7 +111,7 @@ export function costForSpell(spell) {
   const attribute = spell.attributes.reduce((total, id) => total + (ATTRIBUTES.find((item) => item.id === id)?.cost ?? 1), 0);
   const shape = SHAPES.find((item) => item.id === spell.shape)?.cost ?? 1;
   const special = SPECIALS.find((item) => item.id === spell.special)?.cost ?? 0;
-  const power = Math.max(1, Math.ceil(Number(spell.power) / 10));
+  const power = Math.max(1, Math.ceil(Number(spell.power) / 5));
   const sum = attribute + shape + special + power;
   const efficient = spell.special === "efficient" ? 0.5 : 1;
   const synergy = synergyFor(spell.attributes);
@@ -140,7 +140,7 @@ export function defaultSpells() {
 export function freshPlayer() {
   return {
     name: "新人魔法使い", level: 1, exp: 0, rate: 1000,
-    hp: 100, maxHP: 100, mp: 30, maxMP: 70, mpRegen: 5,
+    hp: 100, maxHP: 100, mp: 30, maxMP: 70, mpRegen: 5, speed: 100,
     wins: 0, losses: 0, battles: 0, lastBattle: null,
     spells: defaultSpells(), tutorialCompleted: false, battleControlsTutorialCompleted: false,
   };
@@ -166,6 +166,7 @@ export function migratePlayer(saved) {
   player.maxHP = Math.max(100, finite(player.maxHP, 100));
   player.maxMP = Math.max(70, finite(player.maxMP, 70));
   player.mpRegen = Math.max(5, finite(player.mpRegen, 5));
+  player.speed = Math.min(200, Math.max(1, finite(player.speed, 100)));
   player.hp = Math.min(player.maxHP, Math.max(1, finite(player.hp, 100)));
   player.mp = Math.min(player.maxMP, Math.max(0, finite(player.mp, 30)));
   player.spells = Array.isArray(saved.spells) && saved.spells.length ? saved.spells : base.spells;

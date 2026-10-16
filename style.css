@@ -427,3 +427,8 @@ body.reduce-motion .shape-impact,body.reduce-motion .special-impact,body.reduce-
 /* Spell forge progression: show locked choices without hiding future recipes. */
 .attribute-option.locked,.choice-option.locked { color:#706d68; border-color:rgba(202,175,120,.08); background:rgba(12,13,17,.65); cursor:not-allowed; }
 .unlock-level { color:var(--gold-dim); font:8px var(--mono); }
+
+.unit-level { white-space:nowrap; }.initiative-indicator { max-width:75px; color:var(--gold-bright); font-size:7px; font-weight:500; line-height:1.2; white-space:normal; text-align:center; }
+
+
+.unit-level { white-space:nowrap; }.initiative-indicator { max-width:75px; color:var(--gold-bright); font-size:7px; font-weight:500; line-height:1.2; white-space:normal; text-align:center; }
