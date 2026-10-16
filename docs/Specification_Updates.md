@@ -266,3 +266,14 @@
 4. オンラインレート・シーズン記録・順位表を準備する。オンライン対戦の記録がまだない間、順位表は準備中とする。クラウドセーブは追加しない。
 5. 対戦範囲を合意してからオンライン対戦を試験公開する。
 - 実際のCloudflareリソース作成やゲーム接続は、機能・認証・無料枠での停止時動作を合意するまで開始しない。
+
+### 2026-10-16 — Cloudflare管理コンソール Phase 1 実装記録
+
+- Cloudflare dashboard上で専用Workerプロジェクト`uma-api-staging`をGitHubリポジトリに接続し、Workerルートを`worker`、デプロイブランチを`release/ver-1.0`に設定した。最初の`main`ブランチからのビルドはWorkerルートが存在せず失敗した。以後のデプロイ成功は未確認。
+- Workerは`workers_dev = false`で、カスタムドメイン・route・公開URLは設定しない。Cloudflare Zero Trust、Access application/policy、MFAも未設定のため、管理画面をインターネットに公開しない。
+- UMA専用D1 `uma-dev` に対する初回migration `worker/migrations/0001_admin_console.sql` を作成した。Cloudflare上のD1へは未適用。プレイヤー情報は保存しない。
+- `/admin`に応答するレスポンシブなファンタジー調運営コンソールと、管理者APIを実装した。Worker Accessのidentity emailを取得し、各APIリクエストでD1の有効な管理者・ロールをサーバー側照合する。ブラウザーから送られたメール・ロールを認証根拠にしない。
+- 初回owner登録はWorker secret `BOOTSTRAP_ADMIN_EMAIL`とAccess identityの一致、D1上の一度だけのbootstrap claimを要求する。メールや秘密値はソースへ記載しない。
+- Phase 1のAPI・画面は概要、運営ログ、管理者アカウント/ロール/無効化、メンテナンス設定の保存、お知らせの下書き・状態管理、予定シーズンの登録を提供する。監査ログは更新・削除をDB triggerで拒否する。Season 0はプレシーズンのまま保持し、Season 1開始・レート処理は行わない。
+- お知らせは公開ゲーム画面に未接続。メンテナンス設定は保存のみで、公開ゲーム/APIを遮断しない。BAN、ゲーム数値、BGM、プレイヤーアカウント/OAuth、順位表、オンライン対戦は未実装。画面・READMEで未対応を明示する。
+- D1 migration適用、Worker deploy、Access/MFA、初回owner secret登録、デプロイ後検証の完了までは管理画面URLを共有可能と案内しない。無料枠を維持し、Cloudflareの有料化を自動で有効にしない。

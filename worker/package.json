@@ -1,0 +1,8 @@
+{
+  "name": "uma-api-staging",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "npx wrangler d1 migrations apply DB --remote && npx wrangler deploy"
+  }
+}

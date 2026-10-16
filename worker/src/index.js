@@ -1,3 +1,6 @@
+import { handleAdminApi } from "./admin.js";
+import { adminUiResponse } from "./admin-ui.js";
+
 const ALLOWED_ORIGINS = new Set([
   "https://kot2-lab.github.io",
 ]);
@@ -20,9 +23,24 @@ function jsonResponse(body, status, origin) {
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") ?? "";
+
+    const uiResponse = adminUiResponse(url.pathname);
+    if (uiResponse) return uiResponse;
+
+    if (url.pathname.startsWith("/api/admin/")) {
+      if (url.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: {
+          "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Max-Age": "600",
+          "Vary": "Origin",
+        } });
+      }
+      return handleAdminApi(request, { env, access: ctx?.access });
+    }
 
     if (url.pathname !== "/api/health") {
       return jsonResponse({ error: "not_found" }, 404, origin);
