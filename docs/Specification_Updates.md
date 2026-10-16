@@ -285,3 +285,9 @@
 - 管理画面は未ログイン時にGoogleログインだけを表示し、初回オーナー登録はGoogle確認済みメールと`BOOTSTRAP_ADMIN_EMAIL`の一致、D1上の一度だけのclaimを要求する。管理APIは各リクエストで署名セッションと有効ロールをWorker側で再確認する。
 - OAuth client ID/secret、`ADMIN_SESSION_SECRET`、初回オーナー用メールsecret、D1 migration、Worker公開URL・デプロイは未設定/未実施。`workers_dev=false`を維持する。支払い情報は登録せず、有料化もしない。
 - 認証・CSRF・未認証API拒否・画面スクリプト構文を自動テストし、全テスト成功後にのみデプロイ手順を進める。
+### 2026-10-16 — 管理画面URLの有効化確認
+
+- Cloudflare Worker `uma-api-staging` のDomains画面で、本番URL `https://uma-api-staging.r8asknazotoki.workers.dev` が有効になっていることを確認した。プレビューURLは無効のまま。
+- `/admin`を実際に開き、Googleログイン付き管理画面が配信されることを確認した。WorkerのコードはCloudflare上で動作している。
+- `/auth/google`の確認結果は`/admin?login=unconfigured`への戻り。Google OAuth client ID/secret、署名secret、bootstrapメールが未設定のため、現在ログイン・管理機能の利用はできない。D1 migrationの適用状況も未確認。
+- URLが公開状態でも、ログイン設定前は管理画面データを操作できない。URLを他者へ共有せず、支払い情報や有料プランの設定は行わない。
