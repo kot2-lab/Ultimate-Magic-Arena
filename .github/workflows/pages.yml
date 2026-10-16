@@ -19,12 +19,20 @@ jobs:
     steps:
       - name: Check out the release branch
         uses: actions/checkout@v6
+      - name: Run consolidated game and API tests
+        run: npm test
+      - name: Prepare the public site directory
+        run: mkdir -p _site
+      - name: Copy only runtime files to the public site
+        run: cp index.html style.css script.js _site/
+      - name: Copy game modules and version archive
+        run: cp -R src assets versions _site/
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload the static game
         uses: actions/upload-pages-artifact@v4
         with:
-          path: .
+          path: _site
 
   deploy:
     environment:

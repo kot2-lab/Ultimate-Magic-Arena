@@ -1,0 +1,13 @@
+name = "uma-api-staging"
+main = "src/index.js"
+compatibility_date = "2026-10-16"
+workers_dev = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "uma-dev"
+database_id = "048431c3-b422-4795-af58-4296d452f443"
+migrations_dir = "migrations"
+
+# No public route, credentials, or user data is configured yet.
+# Add authenticated endpoints only in their planned implementation phase.

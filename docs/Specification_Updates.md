@@ -238,6 +238,14 @@
 
 ## 予定仕様 — クラウド機能の範囲と優先順位
 
+### 2026-10-16 — 開発基盤の初期化記録
+
+- Cloudflare D1にUMA専用の開発用データベース`uma-dev`を作成した。既存のQuiz Spark Worker・D1とは別領域であり、データベースIDは`048431c3-b422-4795-af58-4296d452f443`。
+- `worker/`にUMA専用Cloudflare Workerのローカル土台を追加した。現在は`GET /api/health`のみで、未知のパス・メソッドを拒否する。`workers_dev = false`のため公開URLは発行しておらず、CloudflareへのWorkerデプロイもまだ行っていない。
+- D1は未使用で、テーブル・プレイヤーデータ・管理者データは未作成。Google OAuth秘密情報、APIトークン、オンライン対戦、ランキングAPI、クラウドセーブも未設定・未実装。
+- 現行ゲームはGitHub Pagesから配信を続け、CSPとReferrer Policyを追加する。Pagesの公開成果物は実行に必要なゲームファイル・画像・バージョン図書館に限定し、`docs/`・`tests/`・`.github/`・開発設定を含めない。デプロイ前に`npm test`を実行する。
+- この記録は開発環境の初期化であり、管理者画面や認証済みAPIの公開を意味しない。詳細な状態と無料枠の監視方針は`worker/README.md`を参照。
+
 ### 合意済み方針
 - ゲーム本体と画像・CSS・JavaScriptは引き続きGitHub Pagesから配信する。Cloudflareは必要なAPIとデータベースのみに使い、静的ファイルは配信しない。
 - プレイヤーの冒険セーブは当面ブラウザー内に保持し、Cloudflareへ同期・バックアップしない。既存のJSON書き出し・読み込みを維持する。
