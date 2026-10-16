@@ -277,3 +277,11 @@
 - Phase 1のAPI・画面は概要、運営ログ、管理者アカウント/ロール/無効化、メンテナンス設定の保存、お知らせの下書き・状態管理、予定シーズンの登録を提供する。監査ログは更新・削除をDB triggerで拒否する。Season 0はプレシーズンのまま保持し、Season 1開始・レート処理は行わない。
 - お知らせは公開ゲーム画面に未接続。メンテナンス設定は保存のみで、公開ゲーム/APIを遮断しない。BAN、ゲーム数値、BGM、プレイヤーアカウント/OAuth、順位表、オンライン対戦は未実装。画面・READMEで未対応を明示する。
 - D1 migration適用、Worker deploy、Access/MFA、初回owner secret登録、デプロイ後検証の完了までは管理画面URLを共有可能と案内しない。無料枠を維持し、Cloudflareの有料化を自動で有効にしない。
+
+### 2026-10-16 — 管理者認証方針の変更とGoogle OAuth実装
+
+- Cloudflare Zero Trust Accessの初期設定が支払い情報入力画面を要求し、ユーザーは支払い・請求情報の登録をしない方針を明示した。このためAccess導入は行わず、Google OAuthを管理者認証の方式とする。過去のAccess前提のPhase 1記録は当時の設計記録であり、この項目で認証方針を更新する。
+- WorkerにGoogle OAuth開始・callback、署名/claim検証、短命stateとnonce、HMAC署名セッション、HttpOnly/Secure/SameSite=Lax Cookie、ログアウト、D1ロール照合を実装した。UMAはGoogleパスワードを受け取らない。
+- 管理画面は未ログイン時にGoogleログインだけを表示し、初回オーナー登録はGoogle確認済みメールと`BOOTSTRAP_ADMIN_EMAIL`の一致、D1上の一度だけのclaimを要求する。管理APIは各リクエストで署名セッションと有効ロールをWorker側で再確認する。
+- OAuth client ID/secret、`ADMIN_SESSION_SECRET`、初回オーナー用メールsecret、D1 migration、Worker公開URL・デプロイは未設定/未実施。`workers_dev=false`を維持する。支払い情報は登録せず、有料化もしない。
+- 認証・CSRF・未認証API拒否・画面スクリプト構文を自動テストし、全テスト成功後にのみデプロイ手順を進める。

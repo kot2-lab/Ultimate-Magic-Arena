@@ -49,13 +49,13 @@ test("admin browser script parses before deployment", async () => {
   assert.doesNotThrow(() => new Function(source));
 });
 
-test("admin API denies requests without Cloudflare Access identity", async () => {
+test("admin session reports unauthenticated without querying D1", async () => {
   const response = await worker.fetch(new Request("https://uma-api.example/api/admin/session"), {
     DB: { prepare() { throw new Error("DB must not be queried without a verified identity"); } },
   }, {});
 
-  assert.equal(response.status, 401);
-  assert.deepEqual(await response.json(), { error: "unauthorized" });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { authenticated: false });
 });
 
 test("admin mutations reject cross-origin requests", async () => {

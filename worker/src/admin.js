@@ -1,3 +1,5 @@
+import { getAdminIdentity } from "./auth.js";
+
 const MAX_JSON_BYTES = 12_000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -27,19 +29,8 @@ function sameOrigin(request) {
   return request.headers.get("Origin") === new URL(request.url).origin;
 }
 
-async function identity(ctx) {
-  try {
-    const result = await ctx.access?.getIdentity();
-    const email = result?.email;
-    if (!validEmail(email)) return null;
-    return email.trim().toLowerCase();
-  } catch {
-    return null;
-  }
-}
-
-async function authorize(ctx, allowedRoles = ["owner", "operator", "viewer"]) {
-  const email = await identity(ctx);
+async function authorize(request, ctx, allowedRoles = ["owner", "operator", "viewer"]) {
+  const email = await getAdminIdentity(request, ctx.env);
   if (!email || !ctx.env.DB) return { response: json({ error: "unauthorized" }, 401) };
   const account = await ctx.env.DB.prepare(
     "SELECT email, role, status FROM admin_accounts WHERE email = ? COLLATE NOCASE",
@@ -65,7 +56,8 @@ async function listAdmins(db) {
 async function bootstrap(request, ctx) {
   if (!sameOrigin(request)) return json({ error: "origin_rejected" }, 403);
   const body = await readJson(request);
-  const email = await identity(ctx);
+  const email = await getAdminIdentity(request, ctx.env);
+  if (!body) return badRequest("invalid_request");
   if (!email || !ctx.env.DB) return json({ error: "unauthorized" }, 401);
   const configuredEmail = ctx.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
   if (!configuredEmail || email !== configuredEmail) return json({ error: "bootstrap_unavailable" }, 403);
@@ -94,13 +86,14 @@ async function handleAdminApi(request, ctx) {
   if (method !== "GET" && !sameOrigin(request)) return json({ error: "origin_rejected" }, 403);
 
   if (pathname === "/api/admin/session" && method === "GET") {
-    const email = await identity(ctx);
-    if (!email || !ctx.env.DB) return json({ error: "unauthorized" }, 401);
+    const email = await getAdminIdentity(request, ctx.env);
+    if (!email) return json({ authenticated: false });
+    if (!ctx.env.DB) return json({ error: "service_unavailable" }, 503);
     const account = await ctx.env.DB.prepare("SELECT email, role, status FROM admin_accounts WHERE email = ? COLLATE NOCASE").bind(email).first();
-    if (account?.status === "active") return json({ email, role: account.role, bootstrapRequired: false });
+    if (account?.status === "active") return json({ authenticated: true, email, role: account.role, bootstrapRequired: false });
     const count = await ctx.env.DB.prepare("SELECT COUNT(*) AS count FROM admin_accounts WHERE status = 'active'").first();
     const bootstrapAllowed = count.count === 0 && ctx.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase() === email;
-    return bootstrapAllowed ? json({ email, bootstrapRequired: true }) : json({ error: "forbidden" }, 403);
+    return bootstrapAllowed ? json({ email, bootstrapRequired: true }) : json({ authenticated: false });
   }
 
   const permissions = pathname === "/api/admin/session" || pathname === "/api/admin/overview" || pathname.startsWith("/api/admin/announcements") || pathname === "/api/admin/seasons" || pathname === "/api/admin/audit"
@@ -109,7 +102,7 @@ async function handleAdminApi(request, ctx) {
       ? ["owner", "operator"]
       : null;
   if (!permissions) return json({ error: "not_found" }, 404);
-  const auth = await authorize(ctx, permissions);
+  const auth = await authorize(request, ctx, permissions);
   if (auth.response) return auth.response;
   const db = ctx.env.DB;
 

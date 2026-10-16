@@ -1,5 +1,6 @@
 import { handleAdminApi } from "./admin.js";
 import { adminUiResponse } from "./admin-ui.js";
+import { handleAuthRequest } from "./auth.js";
 
 const ALLOWED_ORIGINS = new Set([
   "https://kot2-lab.github.io",
@@ -27,6 +28,9 @@ export default {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") ?? "";
 
+    const authResponse = await handleAuthRequest(request, env);
+    if (authResponse) return authResponse;
+
     const uiResponse = adminUiResponse(url.pathname);
     if (uiResponse) return uiResponse;
 
@@ -39,7 +43,7 @@ export default {
           "Vary": "Origin",
         } });
       }
-      return handleAdminApi(request, { env, access: ctx?.access });
+      return handleAdminApi(request, { env });
     }
 
     if (url.pathname !== "/api/health") {
