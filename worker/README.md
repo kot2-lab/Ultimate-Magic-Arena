@@ -3,11 +3,11 @@
 ## Current verified project state (2026-10-16)
 
 - `uma-api-staging` is the dedicated Cloudflare Worker project connected to `kot2-lab/Ultimate-Magic-Arena`, with repository root `worker` and production branch `release/ver-1.0` configured in the dashboard.
-- The first GitHub Actions build from the default `main` branch failed because that branch did not contain the configured `worker` root. The `release/ver-1.0` branch now contains the Worker source. A successful deployment has not yet been confirmed.
+- The first Cloudflare Git integration build from the default `main` branch failed because that branch did not contain the configured `worker` root. The `release/ver-1.0` branch now contains the Worker source. A successful deployment has not yet been confirmed.
 - `workers_dev = false`; no custom domain or Worker route is configured. The Worker currently has no public URL.
 - The dedicated D1 database `uma-dev` is bound as `DB` (ID `048431c3-b422-4795-af58-4296d452f443`). Migration `0001_admin_console.sql` is committed as source but has not yet been applied in Cloudflare D1. It has no player data.
 - Cloudflare Zero Trust onboarding, an Access application/policy, and MFA enforcement are not configured. Do not enable `workers.dev`, routes, or a public admin URL until Access is configured and verified.
-- A Cloudflare Worker API token exists in the Cloudflare project setup. Never put it in this repository or send it in chat. Do not create another token unless it is actually needed.
+- Cloudflare Git integration is configured. Never copy dashboard-managed tokens or secrets into this repository or chat.
 - Existing Quiz Spark resources are separate and must not be reused or modified.
 
 ## Implemented in this source phase
@@ -25,7 +25,7 @@
 
 1. Finish Cloudflare Zero Trust organization setup. Create an Access application scoped to this Worker and allow only the UMA operator account(s); enforce MFA. Keep `workers.dev` disabled until verified.
 2. Apply `0001_admin_console.sql` to the `uma-dev` D1 database and confirm the tables/default Season 0 exist.
-3. Configure the GitHub deployment job to run D1 migrations before Worker deployment, or run the migration once through the Cloudflare D1 console. Never apply the migration to any Quiz Spark database.
+3. Configure Cloudflare's deploy command to run `npm run deploy` from the `worker` root (it applies D1 migrations, then deploys), or apply the migration once through the Cloudflare D1 console before deployment. Never apply the migration to any Quiz Spark database.
 4. Add `BOOTSTRAP_ADMIN_EMAIL` as a Worker secret in the Cloudflare dashboard for the one initial operator. Do not put the email or any token in Git. Open the Worker only after the Access application and MFA policy are active.
 5. Verify deployment, identity rejection for non-admin users, admin role enforcement, bootstrap one-time behavior, CSRF rejection, audit creation, and D1 Free usage before considering an admin URL ready to share.
 6. After verified access, tell the user the exact URL. Until then, do not claim the server or admin panel is live.
