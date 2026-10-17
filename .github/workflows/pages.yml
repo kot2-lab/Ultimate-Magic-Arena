@@ -23,6 +23,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24.20.0
+      - name: Install Worker test dependencies
+        run: npm ci --prefix worker
       - name: Run consolidated game and API tests
         run: |
           set +e
