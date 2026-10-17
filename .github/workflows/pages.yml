@@ -30,6 +30,8 @@ jobs:
           status=$?
           cat test-output.txt
           if [ "$status" -ne 0 ]; then
+            details=$(grep -E '^(not ok|✖)|SyntaxError:|Error:|ERR_[A-Z_]+' test-output.txt | tail -n 20 | tr '\n' ' ')
+            echo "::error title=Automated test failure::$details"
             {
               echo '### Test failure details'
               echo '```text'
