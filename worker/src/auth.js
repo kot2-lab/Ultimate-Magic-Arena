@@ -1,4 +1,5 @@
 const encoder = new TextEncoder();
+const ADMIN_SESSION_TTL_SECONDS = 5 * 60;
 let cachedGoogleKeys;
 let cachedGoogleKeysUntil = 0;
 
@@ -181,15 +182,15 @@ async function completeGoogleLogin(request, env) {
   }
   await env.DB.prepare("INSERT INTO admin_audit_logs(id, actor_email, action, target, details_json, created_at) VALUES (?, ?, 'auth.google.success', ?, '{}', ?)")
     .bind(crypto.randomUUID(), googleIdentity.email, googleIdentity.email, new Date().toISOString()).run();
-  const session = await signPayload({ email: googleIdentity.email, issuedAt: now, expiresAt: now + 14_400 }, env.ADMIN_SESSION_SECRET);
-  return redirectWithCookies(new URL("/admin", request.url).toString(), [clearCookie("uma_oauth_state"), secureCookie("uma_admin_session", session, 14_400)]);
+  const session = await signPayload({ email: googleIdentity.email, issuedAt: now, expiresAt: now + ADMIN_SESSION_TTL_SECONDS }, env.ADMIN_SESSION_SECRET);
+  return redirectWithCookies(new URL("/admin", request.url).toString(), [clearCookie("uma_oauth_state"), secureCookie("uma_admin_session", session, ADMIN_SESSION_TTL_SECONDS)]);
 }
 
 export async function getAdminIdentity(request, env) {
   const value = parseCookies(request).uma_admin_session;
   const session = await verifyPayload(value, env.ADMIN_SESSION_SECRET);
   const now = Math.floor(Date.now() / 1000);
-  if (!session || !Number.isFinite(session.expiresAt) || session.expiresAt <= now || !Number.isFinite(session.issuedAt) || session.issuedAt > now + 60 || typeof session.email !== "string") return null;
+  if (!session || !Number.isFinite(session.expiresAt) || session.expiresAt <= now || !Number.isFinite(session.issuedAt) || session.issuedAt > now + 60 || session.expiresAt > session.issuedAt + ADMIN_SESSION_TTL_SECONDS || typeof session.email !== "string") return null;
   return session.email;
 }
 
