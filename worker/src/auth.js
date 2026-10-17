@@ -372,18 +372,9 @@ async function completeGoogleLogin(request, env) {
   await env.DB.prepare("INSERT INTO admin_audit_logs(id, actor_email, action, target, details_json, created_at) VALUES (?, ?, 'auth.google.primary_success', ?, '{}', ?)")
     .bind(crypto.randomUUID(), googleIdentity.email, googleIdentity.email, new Date().toISOString()).run();
   const mfaRecord = await getMfaRecord(env.DB, googleIdentity.email);
-  const cleared = [clearCookie("uma_oauth_state"), clearCookie("uma_admin_session"), clearCookie("uma_mfa_setup"), clearCookie("uma_mfa_pending")];
   return mfaRecord?.enabled
-    ? await beginMfaChallenge(request, env, googleIdentity.email).then(async (response) => {
-      const headers = new Headers(response.headers);
-      for (const cookie of cleared) headers.append("Set-Cookie", cookie);
-      return new Response(response.body, { status: response.status, headers });
-    })
-    : await beginMfaSetup(request, env, googleIdentity.email).then(async (response) => {
-      const headers = new Headers(response.headers);
-      for (const cookie of cleared) headers.append("Set-Cookie", cookie);
-      return new Response(response.body, { status: response.status, headers });
-    });
+    ? beginMfaChallenge(request, env, googleIdentity.email, true)
+    : beginMfaSetup(request, env, googleIdentity.email, true);
 }
 
 export async function getAdminIdentity(request, env) {
