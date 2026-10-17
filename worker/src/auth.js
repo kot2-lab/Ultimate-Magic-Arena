@@ -238,7 +238,23 @@ async function setupMfaPage(request, env) {
   qr.addData(uri);
   qr.make();
   const qrSvg = qr.createSvgTag({ cellSize: 5, margin: 4, scalable: true });
-  return authPage("認証アプリを登録", `<p>スマートフォンの認証アプリで「アカウントを追加」から次のQRコードを読み取ってください。QRを読めない場合は、下の設定キーを手動で入力できます。</p><figure class="qr">${qrSvg}<figcaption>UMA Admin · 時間ベース（TOTP）</figcaption></figure><p class="secret"><b>手動設定キー：</b>${escapeHtml(secret)}</p><details><summary>設定URIを表示</summary><p class="secret">${escapeHtml(uri)}</p></details><form method="post" action="/auth/mfa/setup/confirm"><label class="field">アプリに表示された6桁コード<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" required maxlength="6" autofocus></label><button type="submit">認証アプリを確認して有効化</button></form><p class="note">有効化後にバックアップコードを一度だけ表示します。安全な場所に保存してください。QRコードと設定キーは秘密として扱い、他人に見せないでください。</p>`);
+  return authPage("認証アプリを登録", `<p>スマートフォンの認証アプリで「アカウントを追加」から次のQRコードを読み取ってください。Microsoft Authenticatorでは「＋」→「その他のアカウント（Google、Facebookなど）」を選びます。「職場または学校アカウント」は選ばないでください。QRを読めない場合は、下の設定キーを手動で入力できます。</p><figure class="qr">${qrSvg}<figcaption>UMA Admin · 時間ベース（TOTP）</figcaption></figure><p class="secret"><b>手動設定キー：</b>${escapeHtml(secret)}</p><details><summary>設定URIを表示</summary><p class="secret">${escapeHtml(uri)}</p></details><form method="post" action="/auth/mfa/setup/confirm"><label class="field">アプリに表示された6桁コード<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" required maxlength="6" autofocus></label><button type="submit">認証アプリを確認して有効化</button></form><p class="note">有効化後にバックアップコードを一度だけ表示します。安全な場所に保存してください。QRコードと設定キーは秘密として扱い、他人に見せないでください。</p>`);
+}
+
+async function addAuthenticatorAppPage(request, env) {
+  const email = await getAdminIdentity(request, env);
+  if (!email || !(await googleIdentityStillAllowed(email, env))) return redirectToAdmin(request);
+  const record = await getMfaRecord(env.DB, email);
+  if (!record?.enabled || !record.iv || !record.ciphertext) return redirectToAdmin(request);
+
+  const secret = await decryptTotpSecret(record, email, env.ADMIN_SESSION_SECRET);
+  const uri = totpProvisioningUri(secret, email);
+  const qr = qrcode(0, "M");
+  qr.addData(uri);
+  qr.make();
+  const qrSvg = qr.createSvgTag({ cellSize: 5, margin: 4, scalable: true });
+  await auditMfa(env, email, "auth.mfa.authenticator_qr_viewed");
+  return authPage("Microsoft Authenticatorを追加", `<p>このページはGoogleログインと現在の二段階認証を通過した管理者だけが開けます。表示されるQRは、現在使えている認証器と同じ設定です。</p><ol><li>Microsoft Authenticatorを開き、右上の「＋」を押します。</li><li>「その他のアカウント（Google、Facebookなど）」を選びます。</li><li>「QRコードをスキャン」を選び、このQRを読み取ります。</li></ol><p class="error"><b>「職場または学校アカウント」は選ばないでください。</b>UMAはMicrosoftの組織アカウントではありません。</p><figure class="qr">${qrSvg}<figcaption>UMA Admin · 時間ベース（TOTP）</figcaption></figure><p class="secret"><b>手動設定キー：</b>${escapeHtml(secret)}</p><p>登録後、Google AuthenticatorとMicrosoft Authenticatorに表示される6桁コードは同じになります。両方でコードが一致することを確認してください。</p><p class="note">このQRと設定キーは二段階認証の秘密情報です。本人の端末だけで読み取り、他人に送らないでください。Google Authenticatorの登録は削除しないでください。</p><a class="link" href="/admin">管理画面へ戻る</a>`);
 }
 
 async function confirmMfaSetup(request, env) {
@@ -426,6 +442,7 @@ export async function handleAuthRequest(request, env) {
   if (pathname === "/auth/mfa/verify" && request.method === "POST") return verifyMfaLogin(request, env);
   if (pathname === "/auth/mfa/setup" && request.method === "GET") return setupMfaPage(request, env);
   if (pathname === "/auth/mfa/setup/confirm" && request.method === "POST") return confirmMfaSetup(request, env);
+  if (pathname === "/auth/mfa/add-app" && request.method === "GET") return addAuthenticatorAppPage(request, env);
   if (pathname === "/admin" && request.method === "GET") {
     if (cookies.uma_mfa_pending) return new Response(null, { status: 302, headers: { ...noStoreHeaders(), Location: new URL("/auth/mfa", request.url).toString() } });
     if (cookies.uma_mfa_setup) return new Response(null, { status: 302, headers: { ...noStoreHeaders(), Location: new URL("/auth/mfa/setup", request.url).toString() } });
