@@ -26,7 +26,14 @@ function validEmail(value) {
 }
 
 function sameOrigin(request) {
-  return request.headers.get("Origin") === new URL(request.url).origin;
+  const origin = request.headers.get("Origin");
+  const expectedOrigin = new URL(request.url).origin;
+  if (origin !== null) return origin === expectedOrigin;
+  const referer = request.headers.get("Referer");
+  if (referer) {
+    try { return new URL(referer).origin === expectedOrigin; } catch { return false; }
+  }
+  return request.headers.get("Sec-Fetch-Site") === "same-origin";
 }
 
 async function authorize(request, ctx, allowedRoles = ["owner", "operator", "viewer"]) {
