@@ -1,5 +1,24 @@
+import {
+  clearMfaFailures,
+  clearPendingEnrollment,
+  createRecoveryCodes,
+  createTotpSecret,
+  decryptTotpSecret,
+  encryptTotpSecret,
+  getMfaRecord,
+  getPendingEnrollment,
+  hashRecoveryCode,
+  isRateLimited,
+  recordMfaFailure,
+  saveMfaRecord,
+  savePendingEnrollment,
+  totpProvisioningUri,
+  updateMfaRecordOnce,
+  verifyTotp,
+} from "./mfa.js";
 const encoder = new TextEncoder();
 const ADMIN_SESSION_TTL_SECONDS = 5 * 60;
+const MFA_TICKET_TTL_SECONDS = 10 * 60;
 let cachedGoogleKeys;
 let cachedGoogleKeysUntil = 0;
 
@@ -86,6 +105,167 @@ function redirectToAdmin(request, query = "") {
 
 function callbackUrl(request) {
   return new URL("/auth/google/callback", request.url).toString();
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+}
+
+function authPage(title, content, status = 200) {
+  return new Response(`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escapeHtml(title)} · UMA 運営管理室</title><style>:root{color-scheme:dark}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#121217;color:#f4ead8;font:16px/1.7 system-ui,"Yu Gothic UI",sans-serif}.panel{width:min(560px,calc(100% - 36px));box-sizing:border-box;padding:28px;border:1px solid #594a32;border-radius:10px;background:linear-gradient(145deg,#211e20,#19191e);box-shadow:0 20px 70px #0008}h1{font:500 26px Georgia,"Yu Mincho",serif;color:#d9ba7b}p{color:#c6baa7}.field{display:grid;gap:8px;margin:18px 0}input{box-sizing:border-box;width:100%;padding:13px;border:1px solid #64543a;border-radius:6px;background:#121217;color:#fff;font:inherit;letter-spacing:.12em}button,.link{display:inline-block;padding:11px 16px;border:1px solid #a98b52;border-radius:6px;background:#80632f;color:#fff8e8;font:inherit;text-decoration:none;cursor:pointer}button{width:100%}.secret,.codes{padding:14px;overflow-wrap:anywhere;border:1px solid #493d2c;border-radius:6px;background:#111116;font-family:ui-monospace,monospace}.codes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.error{color:#ffb3a9}.note{font-size:13px;color:#a99e8c}a{color:#e7c77e}</style><main class="panel"><div style="color:#c8a867;letter-spacing:.16em;font-size:11px">SECURE OPERATIONS</div><h1>${escapeHtml(title)}</h1>${content}</main></html>`, {
+    status,
+    headers: {
+      ...noStoreHeaders(),
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+      "X-Frame-Options": "DENY",
+    },
+  });
+}
+
+function mfaCodeForm(action, message = "") {
+  return `<p>Googleログインの確認が完了しました。認証アプリに表示されている6桁コード、または保存したバックアップコードを入力してください。</p>${message ? `<p class="error">${escapeHtml(message)}</p>` : ""}<form method="post" action="${action}"><label class="field">確認コード<input name="code" inputmode="text" autocomplete="one-time-code" autocapitalize="characters" required maxlength="32" autofocus></label><button type="submit">確認して管理画面へ</button></form><p class="note">コードを5回間違えると15分間ロックされます。</p>`;
+}
+
+function sessionCookie(email, now, signingSecret) {
+  return signPayload({ email, issuedAt: now, expiresAt: now + ADMIN_SESSION_TTL_SECONDS, mfaVerified: true }, signingSecret)
+    .then((session) => secureCookie("uma_admin_session", session, ADMIN_SESSION_TTL_SECONDS));
+}
+
+async function googleIdentityStillAllowed(email, env) {
+  const account = await env.DB.prepare("SELECT status FROM admin_accounts WHERE email = ? COLLATE NOCASE").bind(email).first();
+  if (account) return account.status === "active";
+  const active = await env.DB.prepare("SELECT COUNT(*) AS count FROM admin_accounts WHERE status = 'active'").first();
+  return active?.count === 0 && env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase() === email;
+}
+
+async function auditMfa(env, email, action, details = {}) {
+  await env.DB.prepare("INSERT INTO admin_audit_logs(id, actor_email, action, target, details_json, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(crypto.randomUUID(), email, action, email, JSON.stringify(details), new Date().toISOString()).run();
+}
+
+async function readMfaTicket(request, env, cookieName) {
+  const signed = parseCookies(request)[cookieName];
+  const ticket = await verifyPayload(signed, env.ADMIN_SESSION_SECRET);
+  const now = Math.floor(Date.now() / 1000);
+  if (!ticket || typeof ticket.email !== "string" || !Number.isFinite(ticket.issuedAt) || ticket.issuedAt > now + 60 || now - ticket.issuedAt > MFA_TICKET_TTL_SECONDS) return null;
+  return ticket;
+}
+
+async function mfaCheckCode(env, email, code, { record, allowRecovery = true } = {}) {
+  if (await isRateLimited(env.DB, email)) return { ok: false, locked: true };
+  let valid = false;
+  let matchedCounter = null;
+  let recoveryHashes = record?.recoveryHashes ?? [];
+  if (record?.enabled && record.iv && record.ciphertext) {
+    const secret = await decryptTotpSecret(record, email, env.ADMIN_SESSION_SECRET);
+    matchedCounter = await verifyTotp(secret, code);
+    valid = matchedCounter !== null && (!Number.isFinite(record.lastCounter) || matchedCounter > record.lastCounter);
+  }
+  if (!valid && allowRecovery && Array.isArray(recoveryHashes)) {
+    const hash = await hashRecoveryCode(code);
+    const index = hash ? recoveryHashes.indexOf(hash) : -1;
+    if (index >= 0) {
+      recoveryHashes = recoveryHashes.filter((_, itemIndex) => itemIndex !== index);
+      valid = true;
+    }
+  }
+  if (!valid) {
+    const locked = await recordMfaFailure(env.DB, email);
+    return { ok: false, locked };
+  }
+  await clearMfaFailures(env.DB, email);
+  return { ok: true, recoveryHashes, matchedCounter };
+}
+
+async function beginMfaChallenge(request, env, email, clearOauthCookie = false) {
+  const now = Math.floor(Date.now() / 1000);
+  const ticket = await signPayload({ email, issuedAt: now }, env.ADMIN_SESSION_SECRET);
+  const headers = new Headers({ ...noStoreHeaders(), Location: new URL("/auth/mfa", request.url).toString() });
+  if (clearOauthCookie) headers.append("Set-Cookie", clearCookie("uma_oauth_state"));
+  headers.append("Set-Cookie", clearCookie("uma_admin_session"));
+  headers.append("Set-Cookie", clearCookie("uma_mfa_setup"));
+  headers.append("Set-Cookie", secureCookie("uma_mfa_pending", ticket, MFA_TICKET_TTL_SECONDS));
+  return new Response(null, { status: 302, headers });
+}
+
+async function beginMfaSetup(request, env, email, clearOauthCookie = false) {
+  const now = Math.floor(Date.now() / 1000);
+  const ticket = await signPayload({ email, issuedAt: now }, env.ADMIN_SESSION_SECRET);
+  const headers = new Headers({ ...noStoreHeaders(), Location: new URL("/auth/mfa/setup", request.url).toString() });
+  if (clearOauthCookie) headers.append("Set-Cookie", clearCookie("uma_oauth_state"));
+  headers.append("Set-Cookie", clearCookie("uma_admin_session"));
+  headers.append("Set-Cookie", clearCookie("uma_mfa_pending"));
+  headers.append("Set-Cookie", secureCookie("uma_mfa_setup", ticket, MFA_TICKET_TTL_SECONDS));
+  return new Response(null, { status: 302, headers });
+}
+
+async function setupMfaPage(request, env) {
+  const ticket = await readMfaTicket(request, env, "uma_mfa_setup");
+  if (!ticket || !(await googleIdentityStillAllowed(ticket.email, env))) return redirectToAdmin(request, "failed");
+  const existing = await getMfaRecord(env.DB, ticket.email);
+  if (existing?.enabled) return beginMfaChallenge(request, env, ticket.email);
+
+  const secret = createTotpSecret();
+  const encrypted = await encryptTotpSecret(secret, ticket.email, env.ADMIN_SESSION_SECRET);
+  await savePendingEnrollment(env.DB, ticket.email, { ...encrypted, expiresAt: Math.floor(Date.now() / 1000) + MFA_TICKET_TTL_SECONDS });
+  const uri = totpProvisioningUri(secret, ticket.email);
+  return authPage("認証アプリを登録", `<p>Google Authenticatorなどの認証アプリで「アカウントを追加」→「設定キーを入力」を選びます。次のキーを登録してください。</p><p class="secret"><b>キー：</b>${escapeHtml(secret)}</p><p class="note">アカウント名：UMA Admin · キーの種類：時間ベース（TOTP）</p><details><summary>設定URIを表示</summary><p class="secret">${escapeHtml(uri)}</p></details><form method="post" action="/auth/mfa/setup/confirm"><label class="field">アプリに表示された6桁コード<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" required maxlength="6" autofocus></label><button type="submit">認証アプリを確認して有効化</button></form><p class="note">有効化後にバックアップコードを一度だけ表示します。安全な場所に保存してください。</p>`);
+}
+
+async function confirmMfaSetup(request, env) {
+  if (!sameOrigin(request)) return json({ error: "origin_rejected" }, 403);
+  const ticket = await readMfaTicket(request, env, "uma_mfa_setup");
+  if (!ticket || !(await googleIdentityStillAllowed(ticket.email, env))) return redirectToAdmin(request, "failed");
+  if (await isRateLimited(env.DB, ticket.email)) return authPage("しばらく待ってください", `<p class="error">試行回数が上限に達しました。15分後にGoogleログインからやり直してください。</p><a class="link" href="/auth/google">Googleでログイン</a>`, 429);
+  const form = await request.formData();
+  const code = String(form.get("code") ?? "").trim();
+  const pending = await getPendingEnrollment(env.DB, ticket.email);
+  const now = Math.floor(Date.now() / 1000);
+  if (!pending || !Number.isFinite(pending.expiresAt) || pending.expiresAt <= now) return authPage("登録の有効期限が切れました", `<p>安全のため設定キーを破棄しました。Googleログインからやり直してください。</p><a class="link" href="/auth/google">Googleでログイン</a>`, 410);
+  const secret = await decryptTotpSecret(pending, ticket.email, env.ADMIN_SESSION_SECRET);
+  const matchedCounter = await verifyTotp(secret, code);
+  if (matchedCounter === null) {
+    const locked = await recordMfaFailure(env.DB, ticket.email);
+    return authPage("コードを確認できません", `<p class="error">${locked ? "試行回数の上限です。15分後にGoogleログインからやり直してください。" : "認証アプリの最新コードを確認してください。"}</p><a class="link" href="/auth/mfa/setup">設定をやり直す</a>`, locked ? 429 : 400);
+  }
+  await clearMfaFailures(env.DB, ticket.email);
+  const recoveryCodes = createRecoveryCodes();
+  const recoveryHashes = await Promise.all(recoveryCodes.map(hashRecoveryCode));
+  await saveMfaRecord(env.DB, ticket.email, { enabled: true, iv: pending.iv, ciphertext: pending.ciphertext, recoveryHashes, lastCounter: matchedCounter });
+  await clearPendingEnrollment(env.DB, ticket.email);
+  await auditMfa(env, ticket.email, "auth.mfa.enabled");
+  const cookie = await sessionCookie(ticket.email, now, env.ADMIN_SESSION_SECRET);
+  const headers = new Headers({ ...noStoreHeaders(), "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'", "X-Frame-Options": "DENY" });
+  headers.append("Set-Cookie", clearCookie("uma_mfa_setup"));
+  headers.append("Set-Cookie", cookie);
+  const codeList = recoveryCodes.map((code) => `<code>${escapeHtml(code)}</code>`).join("");
+  return new Response(`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>バックアップコード · UMA 運営管理室</title><style>:root{color-scheme:dark}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#121217;color:#f4ead8;font:16px/1.7 system-ui,"Yu Gothic UI",sans-serif}.panel{width:min(560px,calc(100% - 36px));box-sizing:border-box;padding:28px;border:1px solid #594a32;border-radius:10px;background:#1b1b20}h1{font:500 26px Georgia,"Yu Mincho",serif;color:#d9ba7b}.codes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.codes code{padding:8px;border:1px solid #493d2c;border-radius:5px;background:#111116;text-align:center}.note{color:#c6baa7;font-size:13px}a{display:inline-block;margin-top:14px;padding:11px 16px;border:1px solid #a98b52;border-radius:6px;background:#80632f;color:#fff8e8;text-decoration:none}</style><main class="panel"><div style="color:#c8a867;letter-spacing:.16em;font-size:11px">SECURE OPERATIONS</div><h1>バックアップコードを保存</h1><p>認証アプリを使えない場合の復旧用コードです。各コードは一度だけ使えます。この画面を閉じると再表示できません。</p><div class="codes">${codeList}</div><p class="note">パスワード管理アプリなど本人だけが見られる場所に保存してください。このコードを他人に送らないでください。</p><a href="/admin">保存して管理画面へ</a></main></html>`, { status: 200, headers });
+}
+
+async function verifyMfaLogin(request, env) {
+  if (!sameOrigin(request)) return json({ error: "origin_rejected" }, 403);
+  const ticket = await readMfaTicket(request, env, "uma_mfa_pending");
+  if (!ticket || !(await googleIdentityStillAllowed(ticket.email, env))) return redirectToAdmin(request, "failed");
+  if (await isRateLimited(env.DB, ticket.email)) return authPage("しばらく待ってください", `<p class="error">コードの試行回数が上限に達しました。15分後にもう一度Googleログインしてください。</p><a class="link" href="/auth/google">Googleでログイン</a>`, 429);
+  const form = await request.formData();
+  const code = String(form.get("code") ?? "").trim();
+  const record = await getMfaRecord(env.DB, ticket.email);
+  if (!record?.enabled) return beginMfaSetup(request, env, ticket.email);
+  const result = await mfaCheckCode(env, ticket.email, code, { record });
+  if (!result.ok) return authPage("確認コードを確認できません", `${result.locked ? `<p class="error">試行回数の上限です。15分後にGoogleログインからやり直してください。</p><a class="link" href="/auth/google">Googleでログイン</a>` : mfaCodeForm("/auth/mfa/verify", "コードが一致しません。もう一度入力してください。")}`, result.locked ? 429 : 400);
+  if (result.matchedCounter !== null) {
+    const consumed = await updateMfaRecordOnce(env.DB, ticket.email, record, { ...record, lastCounter: result.matchedCounter });
+    if (!consumed) return authPage("コードは使用済みです", `${mfaCodeForm("/auth/mfa/verify", "新しい認証アプリコードを入力してください。")}`, 409);
+    await auditMfa(env, ticket.email, "auth.mfa.success");
+  } else {
+    const consumed = await updateMfaRecordOnce(env.DB, ticket.email, record, { ...record, recoveryHashes: result.recoveryHashes });
+    if (!consumed) return authPage("バックアップコードは使用済みです", `${mfaCodeForm("/auth/mfa/verify", "別のバックアップコードを入力してください。")}`, 409);
+    await auditMfa(env, ticket.email, "auth.mfa.recovery_used", { remaining: result.recoveryHashes.length });
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const session = await signPayload({ email: ticket.email, issuedAt: now, expiresAt: now + ADMIN_SESSION_TTL_SECONDS, mfaVerified: true }, env.ADMIN_SESSION_SECRET);
+  return redirectWithCookies(new URL("/admin", request.url).toString(), [clearCookie("uma_mfa_pending"), secureCookie("uma_admin_session", session, ADMIN_SESSION_TTL_SECONDS)]);
 }
 
 async function beginGoogleLogin(request, env) {
@@ -180,22 +360,49 @@ async function completeGoogleLogin(request, env) {
     const active = await env.DB.prepare("SELECT COUNT(*) AS count FROM admin_accounts WHERE status = 'active'").first();
     if (active.count !== 0 || env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase() !== googleIdentity.email) return redirectToAdmin(request, "denied");
   }
-  await env.DB.prepare("INSERT INTO admin_audit_logs(id, actor_email, action, target, details_json, created_at) VALUES (?, ?, 'auth.google.success', ?, '{}', ?)")
+  await env.DB.prepare("INSERT INTO admin_audit_logs(id, actor_email, action, target, details_json, created_at) VALUES (?, ?, 'auth.google.primary_success', ?, '{}', ?)")
     .bind(crypto.randomUUID(), googleIdentity.email, googleIdentity.email, new Date().toISOString()).run();
-  const session = await signPayload({ email: googleIdentity.email, issuedAt: now, expiresAt: now + ADMIN_SESSION_TTL_SECONDS }, env.ADMIN_SESSION_SECRET);
-  return redirectWithCookies(new URL("/admin", request.url).toString(), [clearCookie("uma_oauth_state"), secureCookie("uma_admin_session", session, ADMIN_SESSION_TTL_SECONDS)]);
+  const mfaRecord = await getMfaRecord(env.DB, googleIdentity.email);
+  const cleared = [clearCookie("uma_oauth_state"), clearCookie("uma_admin_session"), clearCookie("uma_mfa_setup"), clearCookie("uma_mfa_pending")];
+  return mfaRecord?.enabled
+    ? await beginMfaChallenge(request, env, googleIdentity.email).then(async (response) => {
+      const headers = new Headers(response.headers);
+      for (const cookie of cleared) headers.append("Set-Cookie", cookie);
+      return new Response(response.body, { status: response.status, headers });
+    })
+    : await beginMfaSetup(request, env, googleIdentity.email).then(async (response) => {
+      const headers = new Headers(response.headers);
+      for (const cookie of cleared) headers.append("Set-Cookie", cookie);
+      return new Response(response.body, { status: response.status, headers });
+    });
 }
 
 export async function getAdminIdentity(request, env) {
   const value = parseCookies(request).uma_admin_session;
   const session = await verifyPayload(value, env.ADMIN_SESSION_SECRET);
   const now = Math.floor(Date.now() / 1000);
-  if (!session || !Number.isFinite(session.expiresAt) || session.expiresAt <= now || !Number.isFinite(session.issuedAt) || session.issuedAt > now + 60 || session.expiresAt > session.issuedAt + ADMIN_SESSION_TTL_SECONDS || typeof session.email !== "string") return null;
+  if (!session || session.mfaVerified !== true || !Number.isFinite(session.expiresAt) || session.expiresAt <= now || !Number.isFinite(session.issuedAt) || session.issuedAt > now + 60 || session.expiresAt > session.issuedAt + ADMIN_SESSION_TTL_SECONDS || typeof session.email !== "string") return null;
   return session.email;
 }
 
 export async function handleAuthRequest(request, env) {
   const { pathname } = new URL(request.url);
+  const cookies = parseCookies(request);
+  if (pathname === "/auth/mfa" && request.method === "GET") {
+    const ticket = await readMfaTicket(request, env, "uma_mfa_pending");
+    if (!ticket || !(await googleIdentityStillAllowed(ticket.email, env))) return redirectToAdmin(request, "failed");
+    const record = await getMfaRecord(env.DB, ticket.email);
+    if (!record?.enabled) return beginMfaSetup(request, env, ticket.email);
+    if (await isRateLimited(env.DB, ticket.email)) return authPage("しばらく待ってください", `<p class="error">コードの試行回数が上限に達しました。15分後にもう一度Googleログインしてください。</p><a class="link" href="/auth/google">Googleでログイン</a>`, 429);
+    return authPage("管理者本人確認", mfaCodeForm("/auth/mfa/verify"));
+  }
+  if (pathname === "/auth/mfa/verify" && request.method === "POST") return verifyMfaLogin(request, env);
+  if (pathname === "/auth/mfa/setup" && request.method === "GET") return setupMfaPage(request, env);
+  if (pathname === "/auth/mfa/setup/confirm" && request.method === "POST") return confirmMfaSetup(request, env);
+  if (pathname === "/admin" && request.method === "GET") {
+    if (cookies.uma_mfa_pending) return new Response(null, { status: 302, headers: { ...noStoreHeaders(), Location: new URL("/auth/mfa", request.url).toString() } });
+    if (cookies.uma_mfa_setup) return new Response(null, { status: 302, headers: { ...noStoreHeaders(), Location: new URL("/auth/mfa/setup", request.url).toString() } });
+  }
   if (pathname === "/auth/google" && request.method === "GET") return beginGoogleLogin(request, env);
   if (pathname === "/auth/google/callback" && request.method === "GET") {
     if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.ADMIN_SESSION_SECRET || !env.DB) return redirectToAdmin(request, "unconfigured");
@@ -205,6 +412,9 @@ export async function handleAuthRequest(request, env) {
     if (!sameOrigin(request)) return json({ error: "origin_rejected" }, 403);
     const headers = new Headers({ ...noStoreHeaders(), Location: new URL("/admin", request.url).toString() });
     headers.append("Set-Cookie", clearCookie("uma_admin_session"));
+    headers.append("Set-Cookie", clearCookie("uma_mfa_pending"));
+    headers.append("Set-Cookie", clearCookie("uma_mfa_setup"));
+    headers.append("Set-Cookie", clearCookie("uma_oauth_state"));
     return new Response(null, { status: 303, headers });
   }
   if (pathname.startsWith("/auth/")) return json({ error: "not_found" }, 404);
