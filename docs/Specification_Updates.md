@@ -331,3 +331,4 @@
 
 - 認証フォーム/APIはOriginが存在する場合に引き続き完全一致を必須とする。Originがブラウザーから省略された場合だけ、同一オリジンReferer、または`Sec-Fetch-Site: same-origin`を使って安全に代替確認する。
 - 他サイト起点のリクエストやOrigin不一致は引き続き拒否する。
+- 初回TOTP登録の確認POSTでは、組み込みブラウザーが`Origin: null`またはOriginを省略する場合があるため、明らかな別Originと`Sec-Fetch-Site`の別サイト値を拒否した上で、10分で失効する署名済みHttpOnly/Secure/SameSite=Lax登録チケットを必須とする。管理APIの同一Origin判定は緩めない。

@@ -242,7 +242,13 @@ async function setupMfaPage(request, env) {
 }
 
 async function confirmMfaSetup(request, env) {
-  if (!sameOrigin(request)) return json({ error: "origin_rejected" }, 403);
+  const origin = request.headers.get("Origin");
+  const fetchSite = request.headers.get("Sec-Fetch-Site");
+  const expectedOrigin = new URL(request.url).origin;
+  if ((origin && origin !== "null" && origin !== expectedOrigin)
+    || ((origin === null || origin === "null") && fetchSite && fetchSite !== "same-origin")) {
+    return json({ error: "origin_rejected" }, 403);
+  }
   const ticket = await readMfaTicket(request, env, "uma_mfa_setup");
   if (!ticket) return redirectLoginFailure(request, "mfa_ticket");
   if (!(await googleIdentityStillAllowed(ticket.email, env))) return redirectLoginFailure(request, "mfa_access");
