@@ -215,9 +215,17 @@ async function setupMfaPage(request, env) {
   const existing = await getMfaRecord(env.DB, ticket.email);
   if (existing?.enabled) return beginMfaChallenge(request, env, ticket.email);
 
-  const secret = createTotpSecret();
-  const encrypted = await encryptTotpSecret(secret, ticket.email, env.ADMIN_SESSION_SECRET);
-  await savePendingEnrollment(env.DB, ticket.email, { ...encrypted, expiresAt: Math.floor(Date.now() / 1000) + MFA_TICKET_TTL_SECONDS });
+  const now = Math.floor(Date.now() / 1000);
+  let pending = await getPendingEnrollment(env.DB, ticket.email);
+  let secret;
+  if (pending && Number.isFinite(pending.expiresAt) && pending.expiresAt > now) {
+    secret = await decryptTotpSecret(pending, ticket.email, env.ADMIN_SESSION_SECRET);
+  } else {
+    secret = createTotpSecret();
+    const encrypted = await encryptTotpSecret(secret, ticket.email, env.ADMIN_SESSION_SECRET);
+    pending = { ...encrypted, expiresAt: now + MFA_TICKET_TTL_SECONDS };
+    await savePendingEnrollment(env.DB, ticket.email, pending);
+  }
   const uri = totpProvisioningUri(secret, ticket.email);
   const qr = qrcode(0, "M");
   qr.addData(uri);
