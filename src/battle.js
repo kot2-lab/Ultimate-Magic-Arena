@@ -1,4 +1,4 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_CPU_LEVEL, SHAPES, SPECIALS, STATUS, costForSpell, defaultSpells, synergyFor } from "./data.js?v=1.5.1";
+import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_CPU_LEVEL, SHAPES, SPECIALS, STATUS, costForSpell, defaultSpells, getRuntimeConfig, synergyFor } from "./data.js?v=1.5.2";
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const roll = (chance, random) => random() < chance;
@@ -8,7 +8,7 @@ export function createBattle(player, cpuLevel = 1, random = Math.random) {
   const enemyLevel = Math.max(1, player.level + difficulty - 1);
   const hpBonus = difficulty === 1 ? 0 : Math.floor(Math.pow(difficulty - 1, 1.35) * 1.7);
   const mpBonus = difficulty === 1 ? 0 : Math.floor(Math.pow(difficulty - 1, 1.15) * 0.75);
-  const enemyMaxHP = difficulty === 1 ? 90 : 100 + difficulty * 14 + hpBonus;
+  const enemyMaxHP = Math.max(1, Math.round((difficulty === 1 ? 90 : 100 + difficulty * 14 + hpBonus) * getRuntimeConfig().cpuHpMultiplier));
   const enemyMaxMP = difficulty === 1 ? 75 : 70 + difficulty * 5 + mpBonus;
   const enemyStartingMP = difficulty === 1 ? 25 : Math.min(enemyMaxMP, 30 + difficulty * 5 + Math.floor((difficulty - 1) * 0.5));
   const spellPowerScale = difficulty === 1 ? 1 : 1 + (difficulty - 1) * 0.025;
@@ -132,7 +132,8 @@ export function castSpell(battle, casterSide, spell, { targetLane, random = Math
 
   const base = Math.max(1, Number(spell.power) || 10);
   const synergy = synergyFor(spell.attributes);
-  let power = base * damageMultiplier(caster) * (synergy ? 1 + synergy.bonus : 1);
+  const tuning = getRuntimeConfig();
+  let power = base * damageMultiplier(caster) * (synergy ? 1 + synergy.bonus : 1) * (casterSide === "enemy" ? tuning.cpuPowerMultiplier : tuning.playerPowerMultiplier);
   if (special.id === "quick") power *= 1.12;
   if (special.id === "pierce" || special.id === "split" || special.id === "chain") power *= 1.14;
   if (special.id === "pierceBurst") power *= 1.22;
@@ -365,11 +366,12 @@ export function expirePlayerTurn(battle, random = Math.random) {
 }
 
 export function awardExperience(player, outcome, enemyLevel, random = Math.random) {
+  const tuning = getRuntimeConfig();
   const participation = 10 + Math.floor(random() * 21);
   const victory = outcome === "victory" ? 100 + Math.floor(random() * 21) : 0;
   const levelDifference = Math.max(0, enemyLevel - player.level);
   const levelBonus = levelDifference ? 5 + Math.floor(random() * 6) + (outcome === "victory" ? 20 : 0) : 0;
-  const earned = participation + victory + levelBonus;
+  const earned = Math.round((participation + victory + levelBonus) * tuning.expRewardMultiplier);
   player.exp += earned;
   const levels = [];
   while (player.level < 999) {

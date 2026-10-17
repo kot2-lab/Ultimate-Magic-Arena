@@ -1,9 +1,31 @@
-export const VERSION = "1.5.1";
-export const MAX_SPELLS = 20;
+export const VERSION = "1.5.2";
+export let MAX_SPELLS = 20;
+const DEFAULT_RUNTIME_CONFIG = Object.freeze({ maxSpells: 20, spellCostMultiplier: 1, playerPowerMultiplier: 1, cpuHpMultiplier: 1, cpuPowerMultiplier: 1, expRewardMultiplier: 1 });
+let runtimeConfig = { ...DEFAULT_RUNTIME_CONFIG };
 export const SAVE_KEY = "umaSave";
 export const SETTINGS_KEY = "umaSettings";
 export const LANES = ["left", "center", "right"];
 export const LANE_NAMES = { left: "左翼", center: "中央", right: "右翼" };
+
+export function applyRuntimeConfig(config) {
+  if (!config || typeof config !== "object") return;
+  const bounded = (key, min, max, integer = false) => {
+    const value = Number(config[key]);
+    if (!Number.isFinite(value) || value < min || value > max || (integer && !Number.isInteger(value))) return DEFAULT_RUNTIME_CONFIG[key];
+    return value;
+  };
+  runtimeConfig = {
+    maxSpells: bounded("maxSpells", 5, 50, true),
+    spellCostMultiplier: bounded("spellCostMultiplier", 0.5, 2),
+    playerPowerMultiplier: bounded("playerPowerMultiplier", 0.5, 1.5),
+    cpuHpMultiplier: bounded("cpuHpMultiplier", 0.5, 2),
+    cpuPowerMultiplier: bounded("cpuPowerMultiplier", 0.5, 2),
+    expRewardMultiplier: bounded("expRewardMultiplier", 0.25, 3),
+  };
+  MAX_SPELLS = runtimeConfig.maxSpells;
+}
+
+export function getRuntimeConfig() { return { ...runtimeConfig }; }
 
 export const ATTRIBUTES = [
   { id: "fire", name: "炎", icon: "🔥", cost: 2, color: "#df7048", role: "高火力・継続ダメージ" },
@@ -115,7 +137,7 @@ export function costForSpell(spell) {
   const sum = attribute + shape + special + power;
   const efficient = spell.special === "efficient" ? 0.5 : 1;
   const synergy = synergyFor(spell.attributes);
-  return Math.max(1, Math.ceil(sum * efficient * (synergy ? 0.94 : 1)));
+  return Math.max(1, Math.ceil(sum * efficient * (synergy ? 0.94 : 1) * runtimeConfig.spellCostMultiplier));
 }
 
 export function synergyFor(attributes) {

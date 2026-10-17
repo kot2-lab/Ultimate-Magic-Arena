@@ -1,4 +1,5 @@
 import { getAdminIdentity } from "./auth.js";
+import { DEFAULT_GAME_CONFIG, readGameConfig, validateGameConfig } from "./game-config.js";
 
 const MAX_JSON_BYTES = 12_000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -60,6 +61,21 @@ async function listAdmins(db) {
   return results;
 }
 
+export async function getPublicRuntimeConfig(db) {
+  if (!db) return { game: { ...DEFAULT_GAME_CONFIG }, maintenance: { enabled: false, message: "" }, announcements: [] };
+  const [game, maintenanceRow, announcementsResult] = await Promise.all([
+    readGameConfig(db),
+    db.prepare("SELECT value_json FROM admin_settings WHERE key = 'maintenance'").first(),
+    db.prepare("SELECT id, title, body, updated_at FROM announcements WHERE status = 'published' ORDER BY updated_at DESC LIMIT 5").all(),
+  ]);
+  let maintenance = { enabled: false, message: "" };
+  try {
+    const value = JSON.parse(maintenanceRow?.value_json ?? "null");
+    if (value && typeof value.enabled === "boolean" && typeof value.message === "string") maintenance = { enabled: value.enabled, message: value.message.slice(0, 240) };
+  } catch { /* use safe defaults */ }
+  return { game: validateGameConfig(game) ?? { ...DEFAULT_GAME_CONFIG }, maintenance, announcements: announcementsResult.results ?? [] };
+}
+
 async function bootstrap(request, ctx) {
   if (!sameOrigin(request)) return json({ error: "origin_rejected" }, 403);
   const body = await readJson(request);
@@ -103,9 +119,9 @@ async function handleAdminApi(request, ctx) {
     return bootstrapAllowed ? json({ email, bootstrapRequired: true }) : json({ authenticated: false });
   }
 
-  const permissions = pathname === "/api/admin/session" || pathname === "/api/admin/overview" || pathname.startsWith("/api/admin/announcements") || pathname === "/api/admin/seasons" || pathname === "/api/admin/audit"
+  const permissions = pathname === "/api/admin/session" || pathname === "/api/admin/overview" || pathname === "/api/admin/announcements" && method === "GET" || pathname.startsWith("/api/admin/announcements/") && method === "GET" || pathname === "/api/admin/seasons" && method === "GET" || pathname === "/api/admin/audit" && method === "GET"
     ? ["owner", "operator", "viewer"]
-    : pathname === "/api/admin/maintenance" || pathname === "/api/admin/accounts" || pathname.startsWith("/api/admin/accounts/")
+    : pathname === "/api/admin/game-config" || pathname.startsWith("/api/admin/announcements") || pathname === "/api/admin/seasons" || pathname === "/api/admin/maintenance" || pathname === "/api/admin/accounts" || pathname.startsWith("/api/admin/accounts/")
       ? ["owner", "operator"]
       : null;
   if (!permissions) return json({ error: "not_found" }, 404);
@@ -121,6 +137,20 @@ async function handleAdminApi(request, ctx) {
       db.prepare("SELECT value_json FROM admin_settings WHERE key = 'maintenance'").first(),
     ]);
     return json({ adminCount: admins.count, publishedAnnouncements: announcements.count, season, maintenance: JSON.parse(maintenance?.value_json ?? '{"enabled":false,"message":""}') });
+  }
+  if (pathname === "/api/admin/game-config") {
+    if (method === "GET") return json(await readGameConfig(db));
+    if (method === "PUT") {
+      const body = await readJson(request);
+      const config = validateGameConfig(body);
+      if (!config) return badRequest("invalid_game_config");
+      const now = new Date().toISOString();
+      await db.batch([
+        db.prepare("INSERT INTO admin_settings(key, value_json, updated_at, updated_by) VALUES ('game_config', ?, ?, ?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json, updated_at=excluded.updated_at, updated_by=excluded.updated_by").bind(JSON.stringify(config), now, auth.actor),
+        db.prepare("INSERT INTO admin_audit_logs(id, actor_email, action, target, details_json, created_at) VALUES (?, ?, 'settings.game_config.update', 'game_config', ?, ?)").bind(crypto.randomUUID(), auth.actor, JSON.stringify(config), now),
+      ]);
+      return json({ ok: true, ...config, updatedAt: now, updatedBy: auth.actor });
+    }
   }
   if (pathname === "/api/admin/maintenance") {
     if (method === "GET") {

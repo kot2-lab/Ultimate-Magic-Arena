@@ -1,4 +1,4 @@
-import { handleAdminApi } from "./admin.js";
+import { getPublicRuntimeConfig, handleAdminApi } from "./admin.js";
 import { adminUiResponse } from "./admin-ui.js";
 import { handleAuthRequest } from "./auth.js";
 
@@ -23,6 +23,19 @@ function jsonResponse(body, status, origin) {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
+function publicConfigResponse(body, origin) {
+  const headers = new Headers({
+    "Cache-Control": "public, max-age=60, s-maxage=60",
+    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+    "Content-Type": "application/json; charset=utf-8",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+    "Vary": "Origin",
+  });
+  if (ALLOWED_ORIGINS.has(origin)) headers.set("Access-Control-Allow-Origin", origin);
+  return new Response(JSON.stringify(body), { headers });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -44,6 +57,11 @@ export default {
         } });
       }
       return handleAdminApi(request, { env });
+    }
+
+    if (url.pathname === "/api/public/runtime-config") {
+      if (request.method !== "GET") return jsonResponse({ error: "method_not_allowed" }, 405, origin);
+      return publicConfigResponse(await getPublicRuntimeConfig(env.DB), origin);
     }
 
     if (url.pathname !== "/api/health") {
