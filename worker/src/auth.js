@@ -259,7 +259,7 @@ async function confirmMfaSetup(request, env) {
   const now = Math.floor(Date.now() / 1000);
   if (!pending || !Number.isFinite(pending.expiresAt) || pending.expiresAt <= now) return authPage("登録の有効期限が切れました", `<p>安全のため設定キーを破棄しました。Googleログインからやり直してください。</p><a class="link" href="/auth/google">Googleでログイン</a>`, 410);
   const secret = await decryptTotpSecret(pending, ticket.email, env.ADMIN_SESSION_SECRET);
-  const matchedCounter = await verifyTotp(secret, code);
+  const matchedCounter = await verifyTotp(secret, code, Date.now(), 2);
   if (matchedCounter === null) {
     const locked = await recordMfaFailure(env.DB, ticket.email);
     return authPage("コードを確認できません", `<p class="error">${locked ? "試行回数の上限です。15分後にGoogleログインからやり直してください。" : "認証アプリの最新コードを確認してください。"}</p><a class="link" href="/auth/mfa/setup">設定をやり直す</a>`, locked ? 429 : 400);

@@ -140,11 +140,11 @@ async function totpAt(secret, counter) {
   return String(number % 1_000_000).padStart(6, "0");
 }
 
-export async function verifyTotp(secret, code, nowMs = Date.now()) {
+export async function verifyTotp(secret, code, nowMs = Date.now(), window = MFA_WINDOW) {
   if (!/^\d{6}$/.test(code)) return null;
   const counter = Math.floor(nowMs / 1000 / MFA_PERIOD_SECONDS);
   let matched = null;
-  for (let offset = -MFA_WINDOW; offset <= MFA_WINDOW; offset += 1) {
+  for (let offset = -window; offset <= window; offset += 1) {
     const candidate = counter + offset;
     if (candidate >= 0 && equalCode(await totpAt(secret, candidate), code)) matched = candidate;
   }
