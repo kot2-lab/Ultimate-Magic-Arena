@@ -16,6 +16,7 @@ import {
   updateMfaRecordOnce,
   verifyTotp,
 } from "./mfa.js";
+import qrcode from "qrcode-generator";
 const encoder = new TextEncoder();
 const ADMIN_SESSION_TTL_SECONDS = 5 * 60;
 const MFA_TICKET_TTL_SECONDS = 10 * 60;
@@ -119,7 +120,7 @@ function escapeHtml(value) {
 }
 
 function authPage(title, content, status = 200) {
-  return new Response(`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escapeHtml(title)} · UMA 運営管理室</title><style>:root{color-scheme:dark}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#121217;color:#f4ead8;font:16px/1.7 system-ui,"Yu Gothic UI",sans-serif}.panel{width:min(560px,calc(100% - 36px));box-sizing:border-box;padding:28px;border:1px solid #594a32;border-radius:10px;background:linear-gradient(145deg,#211e20,#19191e);box-shadow:0 20px 70px #0008}h1{font:500 26px Georgia,"Yu Mincho",serif;color:#d9ba7b}p{color:#c6baa7}.field{display:grid;gap:8px;margin:18px 0}input{box-sizing:border-box;width:100%;padding:13px;border:1px solid #64543a;border-radius:6px;background:#121217;color:#fff;font:inherit;letter-spacing:.12em}button,.link{display:inline-block;padding:11px 16px;border:1px solid #a98b52;border-radius:6px;background:#80632f;color:#fff8e8;font:inherit;text-decoration:none;cursor:pointer}button{width:100%}.secret,.codes{padding:14px;overflow-wrap:anywhere;border:1px solid #493d2c;border-radius:6px;background:#111116;font-family:ui-monospace,monospace}.codes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.error{color:#ffb3a9}.note{font-size:13px;color:#a99e8c}a{color:#e7c77e}</style><main class="panel"><div style="color:#c8a867;letter-spacing:.16em;font-size:11px">SECURE OPERATIONS</div><h1>${escapeHtml(title)}</h1>${content}</main></html>`, {
+  return new Response(`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escapeHtml(title)} · UMA 運営管理室</title><style>:root{color-scheme:dark}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#121217;color:#f4ead8;font:16px/1.7 system-ui,"Yu Gothic UI",sans-serif}.panel{width:min(560px,calc(100% - 36px));box-sizing:border-box;padding:28px;border:1px solid #594a32;border-radius:10px;background:linear-gradient(145deg,#211e20,#19191e);box-shadow:0 20px 70px #0008}h1{font:500 26px Georgia,"Yu Mincho",serif;color:#d9ba7b}p{color:#c6baa7}.field{display:grid;gap:8px;margin:18px 0}input{box-sizing:border-box;width:100%;padding:13px;border:1px solid #64543a;border-radius:6px;background:#121217;color:#fff;font:inherit;letter-spacing:.12em}button,.link{display:inline-block;padding:11px 16px;border:1px solid #a98b52;border-radius:6px;background:#80632f;color:#fff8e8;font:inherit;text-decoration:none;cursor:pointer}button{width:100%}.secret,.codes{padding:14px;overflow-wrap:anywhere;border:1px solid #493d2c;border-radius:6px;background:#111116;font-family:ui-monospace,monospace}.qr{width:min(100%,320px);margin:20px auto;padding:14px;background:#fff;border-radius:8px;text-align:center}.qr svg{display:block;width:100%;height:auto;shape-rendering:crispEdges}.qr figcaption{margin-top:8px;color:#302719;font-size:12px;font-weight:600}.codes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.error{color:#ffb3a9}.note{font-size:13px;color:#a99e8c}a{color:#e7c77e}</style><main class="panel"><div style="color:#c8a867;letter-spacing:.16em;font-size:11px">SECURE OPERATIONS</div><h1>${escapeHtml(title)}</h1>${content}</main></html>`, {
     status,
     headers: {
       ...noStoreHeaders(),
@@ -218,7 +219,11 @@ async function setupMfaPage(request, env) {
   const encrypted = await encryptTotpSecret(secret, ticket.email, env.ADMIN_SESSION_SECRET);
   await savePendingEnrollment(env.DB, ticket.email, { ...encrypted, expiresAt: Math.floor(Date.now() / 1000) + MFA_TICKET_TTL_SECONDS });
   const uri = totpProvisioningUri(secret, ticket.email);
-  return authPage("認証アプリを登録", `<p>Google Authenticatorなどの認証アプリで「アカウントを追加」→「設定キーを入力」を選びます。次のキーを登録してください。</p><p class="secret"><b>キー：</b>${escapeHtml(secret)}</p><p class="note">アカウント名：UMA Admin · キーの種類：時間ベース（TOTP）</p><details><summary>設定URIを表示</summary><p class="secret">${escapeHtml(uri)}</p></details><form method="post" action="/auth/mfa/setup/confirm"><label class="field">アプリに表示された6桁コード<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" required maxlength="6" autofocus></label><button type="submit">認証アプリを確認して有効化</button></form><p class="note">有効化後にバックアップコードを一度だけ表示します。安全な場所に保存してください。</p>`);
+  const qr = qrcode(0, "M");
+  qr.addData(uri);
+  qr.make();
+  const qrSvg = qr.createSvgTag({ cellSize: 5, margin: 4, scalable: true });
+  return authPage("認証アプリを登録", `<p>スマートフォンの認証アプリで「アカウントを追加」から次のQRコードを読み取ってください。QRを読めない場合は、下の設定キーを手動で入力できます。</p><figure class="qr">${qrSvg}<figcaption>UMA Admin · 時間ベース（TOTP）</figcaption></figure><p class="secret"><b>手動設定キー：</b>${escapeHtml(secret)}</p><details><summary>設定URIを表示</summary><p class="secret">${escapeHtml(uri)}</p></details><form method="post" action="/auth/mfa/setup/confirm"><label class="field">アプリに表示された6桁コード<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" required maxlength="6" autofocus></label><button type="submit">認証アプリを確認して有効化</button></form><p class="note">有効化後にバックアップコードを一度だけ表示します。安全な場所に保存してください。QRコードと設定キーは秘密として扱い、他人に見せないでください。</p>`);
 }
 
 async function confirmMfaSetup(request, env) {
