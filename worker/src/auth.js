@@ -184,7 +184,12 @@ async function mfaCheckCode(env, email, code, { record, allowRecovery = true } =
   if (record?.enabled && record.iv && record.ciphertext) {
     const secret = await decryptTotpSecret(record, email, env.ADMIN_SESSION_SECRET);
     matchedCounter = await verifyTotp(secret, code);
-    valid = matchedCounter !== null && (!Number.isFinite(record.lastCounter) || matchedCounter > record.lastCounter);
+    if (matchedCounter !== null && Number.isFinite(record.lastCounter) && matchedCounter <= record.lastCounter) {
+      // A valid code from an already consumed time step is a replay, not a
+      // mistyped code. Do not count it toward the account lockout.
+      return { ok: false, replayed: true, locked: false };
+    }
+    valid = matchedCounter !== null;
   }
   if (!valid && allowRecovery && Array.isArray(recoveryHashes)) {
     const hash = await hashRecoveryCode(code);
@@ -308,7 +313,7 @@ async function verifyMfaLogin(request, env) {
   const record = await getMfaRecord(env.DB, ticket.email);
   if (!record?.enabled) return beginMfaSetup(request, env, ticket.email);
   const result = await mfaCheckCode(env, ticket.email, code, { record });
-  if (!result.ok) return authPage("確認コードを確認できません", `${result.locked ? `<p class="error">試行回数の上限です。15分後にGoogleログインからやり直してください。</p><a class="link" href="/auth/google">Googleでログイン</a>` : mfaCodeForm("/auth/mfa/verify", "コードが一致しません。もう一度入力してください。")}`, result.locked ? 429 : 400);
+  if (!result.ok) return authPage("確認コードを確認できません", `${result.locked ? `<p class="error">試行回数の上限です。15分後にGoogleログインからやり直してください。</p><a class="link" href="/auth/google">Googleでログイン</a>` : mfaCodeForm("/auth/mfa/verify", result.replayed ? "このコードは既に使用済みです。認証アプリのコードが切り替わった後、新しい6桁コードを一度だけ入力してください。" : "コードが一致しません。認証アプリの最新コードを一度だけ入力してください。")}`, result.locked ? 429 : result.replayed ? 409 : 400);
   if (result.matchedCounter !== null) {
     const consumed = await updateMfaRecordOnce(env.DB, ticket.email, record, { ...record, lastCounter: result.matchedCounter });
     if (!consumed) return authPage("コードは使用済みです", `${mfaCodeForm("/auth/mfa/verify", "新しい認証アプリコードを入力してください。")}`, 409);

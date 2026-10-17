@@ -2,7 +2,9 @@ const encoder = new TextEncoder();
 const MFA_PREFIX = "admin.mfa.";
 const FAIL_PREFIX = "admin.mfa.fail.";
 const MFA_PERIOD_SECONDS = 30;
-const MFA_WINDOW = 1;
+// Allow up to ±60 seconds of device/server clock drift. This matches the
+// enrollment window so a code accepted during setup remains usable at login.
+const MFA_WINDOW = 2;
 const MFA_MAX_FAILURES = 5;
 const MFA_LOCK_SECONDS = 15 * 60;
 
