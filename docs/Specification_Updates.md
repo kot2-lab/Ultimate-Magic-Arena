@@ -310,3 +310,8 @@
 - Google OAuthの失敗は段階別の一般向け案内を表示し、クライアントシークレットやトークンなどの秘密値・応答本文は画面やURLに含めない。
 - Google OAuth Client IDは公開値として`worker/wrangler.toml`の`[vars]`に置き、GitHub連携デプロイで消えないよう構成ファイルを正とする。Client Secret、`ADMIN_SESSION_SECRET`、bootstrapメールは引き続きCloudflare secretsで管理する。
 - Cloudflareの有料機能・請求設定は追加しない。Worker `uma-api-staging` のGitHub連携でデプロイし、無料枠の範囲で運用する。
+
+### 2026-10-17 — 二段階認証の失敗段階を表示
+
+- 管理者ログインがGoogle OAuthを通過した後に失敗した場合も、認証情報の値を出さず、二段階認証チケット不在/期限切れと管理者登録状態の不一致を別々の一般向け案内で表示する。
+- 失敗段階を`/admin`のURLに固定コードとして追加し、次の切り分けに使う。メールアドレス、Cookie、トークン、秘密値はURLへ含めない。

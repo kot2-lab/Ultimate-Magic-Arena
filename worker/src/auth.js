@@ -209,7 +209,8 @@ async function beginMfaSetup(request, env, email, clearOauthCookie = false) {
 
 async function setupMfaPage(request, env) {
   const ticket = await readMfaTicket(request, env, "uma_mfa_setup");
-  if (!ticket || !(await googleIdentityStillAllowed(ticket.email, env))) return redirectToAdmin(request, "failed");
+  if (!ticket) return redirectLoginFailure(request, "mfa_ticket");
+  if (!(await googleIdentityStillAllowed(ticket.email, env))) return redirectLoginFailure(request, "mfa_access");
   const existing = await getMfaRecord(env.DB, ticket.email);
   if (existing?.enabled) return beginMfaChallenge(request, env, ticket.email);
 
@@ -223,7 +224,8 @@ async function setupMfaPage(request, env) {
 async function confirmMfaSetup(request, env) {
   if (!sameOrigin(request)) return json({ error: "origin_rejected" }, 403);
   const ticket = await readMfaTicket(request, env, "uma_mfa_setup");
-  if (!ticket || !(await googleIdentityStillAllowed(ticket.email, env))) return redirectToAdmin(request, "failed");
+  if (!ticket) return redirectLoginFailure(request, "mfa_ticket");
+  if (!(await googleIdentityStillAllowed(ticket.email, env))) return redirectLoginFailure(request, "mfa_access");
   if (await isRateLimited(env.DB, ticket.email)) return authPage("しばらく待ってください", `<p class="error">試行回数が上限に達しました。15分後にGoogleログインからやり直してください。</p><a class="link" href="/auth/google">Googleでログイン</a>`, 429);
   const form = await request.formData();
   const code = String(form.get("code") ?? "").trim();
@@ -253,7 +255,8 @@ async function confirmMfaSetup(request, env) {
 async function verifyMfaLogin(request, env) {
   if (!sameOrigin(request)) return json({ error: "origin_rejected" }, 403);
   const ticket = await readMfaTicket(request, env, "uma_mfa_pending");
-  if (!ticket || !(await googleIdentityStillAllowed(ticket.email, env))) return redirectToAdmin(request, "failed");
+  if (!ticket) return redirectLoginFailure(request, "mfa_ticket");
+  if (!(await googleIdentityStillAllowed(ticket.email, env))) return redirectLoginFailure(request, "mfa_access");
   if (await isRateLimited(env.DB, ticket.email)) return authPage("しばらく待ってください", `<p class="error">コードの試行回数が上限に達しました。15分後にもう一度Googleログインしてください。</p><a class="link" href="/auth/google">Googleでログイン</a>`, 429);
   const form = await request.formData();
   const code = String(form.get("code") ?? "").trim();
@@ -396,7 +399,8 @@ export async function handleAuthRequest(request, env) {
   const cookies = parseCookies(request);
   if (pathname === "/auth/mfa" && request.method === "GET") {
     const ticket = await readMfaTicket(request, env, "uma_mfa_pending");
-    if (!ticket || !(await googleIdentityStillAllowed(ticket.email, env))) return redirectToAdmin(request, "failed");
+    if (!ticket) return redirectLoginFailure(request, "mfa_ticket");
+    if (!(await googleIdentityStillAllowed(ticket.email, env))) return redirectLoginFailure(request, "mfa_access");
     const record = await getMfaRecord(env.DB, ticket.email);
     if (!record?.enabled) return beginMfaSetup(request, env, ticket.email);
     if (await isRateLimited(env.DB, ticket.email)) return authPage("しばらく待ってください", `<p class="error">コードの試行回数が上限に達しました。15分後にもう一度Googleログインしてください。</p><a class="link" href="/auth/google">Googleでログイン</a>`, 429);
