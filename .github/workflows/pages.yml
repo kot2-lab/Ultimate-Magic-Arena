@@ -19,6 +19,10 @@ jobs:
     steps:
       - name: Check out the release branch
         uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.20.0
       - name: Run consolidated game and API tests
         run: npm test
       - name: Prepare the public site directory
