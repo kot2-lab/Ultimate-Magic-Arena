@@ -308,4 +308,5 @@
 - Googleログイン後の追加認証を通過した管理セッションは5分で失効する。Googleアカウント側の2段階認証設定に加え、このUMA専用認証アプリ確認を毎回の新規ログインに適用する。
 - 認証失敗、成功、バックアップコード利用、認証器登録を監査ログへ記録する。認証器秘密鍵と復旧コードはログへ記録しない。
 - Google OAuthの失敗は段階別の一般向け案内を表示し、クライアントシークレットやトークンなどの秘密値・応答本文は画面やURLに含めない。
+- Google OAuth Client IDは公開値として`worker/wrangler.toml`の`[vars]`に置き、GitHub連携デプロイで消えないよう構成ファイルを正とする。Client Secret、`ADMIN_SESSION_SECRET`、bootstrapメールは引き続きCloudflare secretsで管理する。
 - Cloudflareの有料機能・請求設定は追加しない。Worker `uma-api-staging` のGitHub連携でデプロイし、無料枠の範囲で運用する。

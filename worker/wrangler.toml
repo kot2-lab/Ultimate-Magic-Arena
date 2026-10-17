@@ -3,11 +3,13 @@ main = "src/index.js"
 compatibility_date = "2026-10-16"
 workers_dev = true
 
+[vars]
+GOOGLE_CLIENT_ID = "491286560569-495tl04a8eukntu7t4lhvf0p3oj7808c.apps.googleusercontent.com"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "uma-dev"
 database_id = "048431c3-b422-4795-af58-4296d452f443"
 migrations_dir = "migrations"
 
-# No public route, credentials, or user data is configured yet.
-# Add authenticated endpoints only in their planned implementation phase.
+# OAuth client ID is public configuration. OAuth/session secrets stay in Cloudflare secrets.
