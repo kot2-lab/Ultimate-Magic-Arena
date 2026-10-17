@@ -103,6 +103,13 @@ function redirectToAdmin(request, query = "") {
   return new Response(null, { status: 302, headers: { ...noStoreHeaders(), Location: url.toString() } });
 }
 
+function redirectLoginFailure(request, stage) {
+  const url = new URL("/admin", request.url);
+  url.searchParams.set("login", "failed");
+  url.searchParams.set("stage", stage);
+  return new Response(null, { status: 302, headers: { ...noStoreHeaders(), Location: url.toString() } });
+}
+
 function callbackUrl(request) {
   return new URL("/auth/google/callback", request.url).toString();
 }
@@ -334,9 +341,8 @@ async function completeGoogleLogin(request, env) {
   const code = url.searchParams.get("code");
   const signedState = await verifyPayload(cookies.uma_oauth_state, env.ADMIN_SESSION_SECRET);
   const now = Math.floor(Date.now() / 1000);
-  if (!signedState || !state || state !== signedState.state || !Number.isFinite(signedState.issuedAt) || signedState.issuedAt > now + 60 || now - signedState.issuedAt > 600 || !code || url.searchParams.has("error")) {
-    return redirectToAdmin(request, "failed");
-  }
+  if (url.searchParams.has("error")) return redirectLoginFailure(request, "google");
+  if (!signedState || !state || state !== signedState.state || !Number.isFinite(signedState.issuedAt) || signedState.issuedAt > now + 60 || now - signedState.issuedAt > 600 || !code) return redirectLoginFailure(request, "state");
 
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -349,10 +355,10 @@ async function completeGoogleLogin(request, env) {
       grant_type: "authorization_code",
     }),
   });
-  if (!tokenResponse.ok) return redirectToAdmin(request, "failed");
+  if (!tokenResponse.ok) return redirectLoginFailure(request, "token");
   const tokens = await tokenResponse.json();
   const googleIdentity = await verifyGoogleIdToken(tokens.id_token ?? "", env, signedState.nonce);
-  if (!googleIdentity) return redirectToAdmin(request, "failed");
+  if (!googleIdentity) return redirectLoginFailure(request, "identity");
 
   const account = await env.DB.prepare("SELECT role, status FROM admin_accounts WHERE email = ? COLLATE NOCASE").bind(googleIdentity.email).first();
   if (account && account.status !== "active") return redirectToAdmin(request, "denied");
@@ -406,7 +412,7 @@ export async function handleAuthRequest(request, env) {
   if (pathname === "/auth/google" && request.method === "GET") return beginGoogleLogin(request, env);
   if (pathname === "/auth/google/callback" && request.method === "GET") {
     if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.ADMIN_SESSION_SECRET || !env.DB) return redirectToAdmin(request, "unconfigured");
-    try { return await completeGoogleLogin(request, env); } catch { return redirectToAdmin(request, "failed"); }
+    try { return await completeGoogleLogin(request, env); } catch { return redirectLoginFailure(request, "server"); }
   }
   if (pathname === "/auth/logout" && request.method === "POST") {
     if (!sameOrigin(request)) return json({ error: "origin_rejected" }, 403);
