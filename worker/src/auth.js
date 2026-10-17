@@ -105,6 +105,15 @@ function sameOrigin(request) {
   return request.headers.get("Sec-Fetch-Site") === "same-origin";
 }
 
+function allowMfaFormOrigin(request) {
+  const origin = request.headers.get("Origin");
+  const fetchSite = request.headers.get("Sec-Fetch-Site");
+  const expectedOrigin = new URL(request.url).origin;
+  if ((origin && origin !== "null" && origin !== expectedOrigin)
+    || ((origin === null || origin === "null") && fetchSite && fetchSite !== "same-origin")) return false;
+  return true;
+}
+
 function redirectToAdmin(request, query = "") {
   const url = new URL("/admin", request.url);
   if (query) url.searchParams.set("login", query);
@@ -258,13 +267,7 @@ async function addAuthenticatorAppPage(request, env) {
 }
 
 async function confirmMfaSetup(request, env) {
-  const origin = request.headers.get("Origin");
-  const fetchSite = request.headers.get("Sec-Fetch-Site");
-  const expectedOrigin = new URL(request.url).origin;
-  if ((origin && origin !== "null" && origin !== expectedOrigin)
-    || ((origin === null || origin === "null") && fetchSite && fetchSite !== "same-origin")) {
-    return json({ error: "origin_rejected" }, 403);
-  }
+  if (!allowMfaFormOrigin(request)) return json({ error: "origin_rejected" }, 403);
   const ticket = await readMfaTicket(request, env, "uma_mfa_setup");
   if (!ticket) return redirectLoginFailure(request, "mfa_ticket");
   if (!(await googleIdentityStillAllowed(ticket.email, env))) return redirectLoginFailure(request, "mfa_access");
@@ -295,7 +298,7 @@ async function confirmMfaSetup(request, env) {
 }
 
 async function verifyMfaLogin(request, env) {
-  if (!sameOrigin(request)) return json({ error: "origin_rejected" }, 403);
+  if (!allowMfaFormOrigin(request)) return json({ error: "origin_rejected" }, 403);
   const ticket = await readMfaTicket(request, env, "uma_mfa_pending");
   if (!ticket) return redirectLoginFailure(request, "mfa_ticket");
   if (!(await googleIdentityStillAllowed(ticket.email, env))) return redirectLoginFailure(request, "mfa_access");

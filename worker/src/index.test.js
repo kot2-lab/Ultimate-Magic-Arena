@@ -68,3 +68,25 @@ test("admin mutations reject cross-origin requests", async () => {
   assert.equal(response.status, 403);
   assert.deepEqual(await response.json(), { error: "origin_rejected" });
 });
+
+test("MFA form accepts opaque in-app browser origin but still requires a signed ticket", async () => {
+  const response = await worker.fetch(new Request("https://uma-api.example/auth/mfa/verify", {
+    method: "POST",
+    headers: { Origin: "null", "Sec-Fetch-Site": "same-origin", "Content-Type": "application/x-www-form-urlencoded" },
+    body: "code=123456",
+  }), { ADMIN_SESSION_SECRET: "a".repeat(40) });
+
+  assert.equal(response.status, 302);
+  assert.match(response.headers.get("location"), /login=failed.*stage=mfa_ticket/);
+});
+
+test("MFA form rejects an explicitly cross-site request", async () => {
+  const response = await worker.fetch(new Request("https://uma-api.example/auth/mfa/verify", {
+    method: "POST",
+    headers: { Origin: "null", "Sec-Fetch-Site": "cross-site", "Content-Type": "application/x-www-form-urlencoded" },
+    body: "code=123456",
+  }), { ADMIN_SESSION_SECRET: "a".repeat(40) });
+
+  assert.equal(response.status, 403);
+  assert.deepEqual(await response.json(), { error: "origin_rejected" });
+});
