@@ -1,8 +1,9 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, freshSettings, migratePlayer, requiredExp, spellPowerLimit, spellUnlockLevel, synergyFor } from "./data.js?v=1.5.2";
-import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.5.2";
-import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.5.2";
-import { Soundscape } from "./audio.js?v=1.5.2";
-import { loadRuntimeConfig } from "./runtime-config.js?v=1.5.2";
+import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, PLAYER_SKINS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, freshSettings, migratePlayer, requiredExp, spellPowerLimit, spellUnlockLevel, synergyFor } from "./data.js?v=1.5.3";
+import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.5.3";
+import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.5.3";
+import { Soundscape } from "./audio.js?v=1.5.3";
+import { loadRuntimeConfig } from "./runtime-config.js?v=1.5.3";
+import { characterArtwork } from "./characters.js?v=1.5.3";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -128,6 +129,7 @@ function renderHome() {
   $("#homeSpellCount").textContent = player.spells.length;
   $("#homeSpellLimit").textContent = String(MAX_SPELLS);
   $("#headerPlayerName").textContent = player.name;
+  renderCharacterAvatar($(".player-chip .player-avatar"), player.skinId, "player");
   $("#headerLevel").textContent = player.level;
   $("#headerRank").textContent = rankFor(player.rate);
 }
@@ -284,6 +286,21 @@ function renderProfile() {
   $("#profileName").textContent = player.name;
   $("#profileRank").textContent = rank;
   $("#profileLevel").textContent = String(player.level);
+  renderCharacterAvatar($("#profileAvatar"), player.skinId, "player");
+  $("#skinOptions").replaceChildren(...PLAYER_SKINS.map((skin) => {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = `skin-option${player.skinId === skin.id ? " selected" : ""}`;
+    option.dataset.skinId = skin.id;
+    option.setAttribute("aria-pressed", String(player.skinId === skin.id));
+    const preview = document.createElement("span");
+    preview.className = "skin-preview";
+    preview.innerHTML = characterArtwork(skin.id);
+    const name = document.createElement("strong");
+    name.textContent = skin.name;
+    option.append(preview, name);
+    return option;
+  }));
   const stats = [
     ["レーティング", Number(player.rate).toLocaleString("ja-JP")], ["勝利", String(player.wins)], ["敗北", String(player.losses)], ["総対戦数", String(player.battles)],
     ["最大HP", String(player.maxHP)], ["最大MP", String(player.maxMP)], ["MP回復量", `${player.mpRegen} / turn`], ["勝率", player.battles ? `${Math.round(player.wins / player.battles * 100)}%` : "—"],
@@ -415,11 +432,13 @@ function renderUnit(side, unit) {
     $("#battlePlayerName").textContent = unit.name;
     $("#battlePlayerLevel").textContent = String(unit.level);
     $("#playerSpeedText").textContent = String(unit.speed);
+    renderCharacterAvatar($(".player-avatar-large"), player.skinId, "player");
   } else {
     $("#enemyName").textContent = unit.name;
     $("#enemyLevel").textContent = String(unit.level);
     $("#enemySpeedText").textContent = String(unit.speed);
-    $("#enemyAvatar").textContent = ["♜", "♟", "♙", "♞", "♛", "♜", "♟", "♘", "♚", "♕", "⚔", "♞", "☾", "♜", "♛", "♟", "♙", "✦", "♚", "♕"][battle.difficulty - 1];
+    const rivalSkin = PLAYER_SKINS[(battle.difficulty + 1) % PLAYER_SKINS.length].id;
+    renderCharacterAvatar($("#enemyAvatar"), rivalSkin, "enemy");
   }
   $(`#${prefix}HPText`).textContent = String(unit.hp);
   $(`#${prefix}MaxHPText`).textContent = String(unit.maxHP);
@@ -429,6 +448,15 @@ function renderUnit(side, unit) {
   $(`#${prefix}MPBar`).style.width = `${Math.max(0, unit.mp / unit.maxMP * 100)}%`;
   const labels = [...unit.statuses.map((item) => `${STATUS.find((status) => status.id === item.id)?.icon || "✧"} ${STATUS.find((status) => status.id === item.id)?.name} ${item.turns}`), ...unit.buffs.map((buff) => `${buff.type === "barrier" ? "⬡" : "✦"} ${buff.type === "barrier" ? "結界" : buff.type === "power" ? "魔力上昇" : buff.type === "weakened" ? "弱体" : buff.type === "summon" ? "使い魔" : "余波"} ${buff.turns}`)];
   $(`#${prefix}Tags`).replaceChildren(...labels.map((label) => { const tag = document.createElement("span"); tag.className = "unit-tag"; tag.textContent = label; return tag; }));
+}
+
+function renderCharacterAvatar(element, skinId, side) {
+  if (!element) return;
+  const skin = PLAYER_SKINS.some((item) => item.id === skinId) ? skinId : "astral";
+  const signature = `${side}:${skin}`;
+  if (element.dataset.character === signature) return;
+  element.dataset.character = signature;
+  element.innerHTML = characterArtwork(skin, side);
 }
 
 function startBattle(cpuLevel) {
@@ -551,17 +579,17 @@ function animateBattleEvents(before, action, playerResult = null) {
       const costLabel = `消費MP −${costForSpell(action.spell)}`;
       const forced = playerSpellLog.match(/(?:中央|左翼|右翼)から(?:中央|左翼|右翼)へ(?:引き寄せられた|押し出された)/)?.[0];
       const movementLabel = forced ? ` · ${forced}` : "";
-      if (playerSpellLog.includes("クリティカル回復")) showBattleAnnouncement("CRITICAL HEAL!", `回復 · ${action.spell.name} · ${costLabel}`, "heal");
-      else if (playerSpellLog.includes("クリティカル")) showBattleAnnouncement(`CRITICAL! −${playerResult?.damage || 0}`, `クリティカル · ${action.spell.name} · ${costLabel}${movementLabel}`, "critical");
-      else if (playerResult?.hit === false) showBattleAnnouncement("MISS", `届かなかった · ${shape?.name || "魔法"} · ${action.spell.name} · ${costLabel}`, "miss");
-      else if (shape?.kind === "heal") showBattleAnnouncement(`回復！ +${playerSpellLog.match(/HPが(\d+)回復/)?.[1] || 0}`, `${action.spell.name} · HPを回復 · ${costLabel}`, "heal");
-      else if (shape?.kind === "damage" && playerResult?.damage > 0) showBattleAnnouncement("命中！", `${shape.name} · ${action.spell.name} · −${playerResult.damage} · ${costLabel}${movementLabel}`, "attack");
-      else showBattleAnnouncement("魔法発動！", `${shape?.name || "魔法"} · ${action.spell.name} · ${costLabel}`, "attack");
+      if (playerSpellLog.includes("クリティカル回復")) showBattleAnnouncement(`${battle.player.name}の回復！`, `CRITICAL HEAL +${playerSpellLog.match(/HPが(\d+)回復/)?.[1] || 0} · ${action.spell.name} · ${costLabel}`, "heal");
+      else if (playerSpellLog.includes("クリティカル")) showBattleAnnouncement(`${battle.player.name}のCRITICAL! −${playerResult?.damage || 0}`, `${battle.enemy.name}に命中 · ${action.spell.name} · ${costLabel}${movementLabel}`, "critical");
+      else if (playerResult?.hit === false) showBattleAnnouncement(`${battle.player.name}の魔法はMISS`, `${battle.enemy.name}に届かなかった · ${shape?.name || "魔法"} · ${action.spell.name} · ${costLabel}`, "miss");
+      else if (shape?.kind === "heal") showBattleAnnouncement(`${battle.player.name}を回復！ +${playerSpellLog.match(/HPが(\d+)回復/)?.[1] || 0}`, `${action.spell.name} · HPを回復 · ${costLabel}`, "heal");
+      else if (shape?.kind === "damage" && playerResult?.damage > 0) showBattleAnnouncement(`${battle.player.name}の攻撃！`, `${battle.enemy.name}に命中 · ${shape.name}「${action.spell.name}」 · −${playerResult.damage} · ${costLabel}${movementLabel}`, "attack");
+      else showBattleAnnouncement(`${battle.player.name}が魔法発動！`, `${shape?.name || "魔法"}「${action.spell.name}」 · ${costLabel}`, "attack");
       animateSpell(action.spell, "player", { lane: playerResult?.hit === false ? battle.enemy.lane : action.targetLane, missed: playerResult?.hit === false });
       if (playerResult?.damage > 0) window.setTimeout(() => revealBattleImpact("enemy", playerResult.damage), 420);
       else if (enemyDelta < 0) window.setTimeout(() => revealBattleImpact("enemy", -enemyDelta, true), 420);
     } else if (action.type === "move") {
-      showBattleAnnouncement("移動！", `${LANE_NAMES[before.playerLane]} → ${LANE_NAMES[battle.player.lane]}`, "move");
+      showBattleAnnouncement(`${battle.player.name}が移動！`, `${LANE_NAMES[before.playerLane]} → ${LANE_NAMES[battle.player.lane]}`, "move");
       animateMovement("player");
     } else if (action.type === "pass") {
       showBattleAnnouncement("様子を見る", "魔力を整え、次の一手へ", "move");
@@ -574,23 +602,23 @@ function animateBattleEvents(before, action, playerResult = null) {
       const message = result?.message || "相手が魔法を使った。";
       const heal = Number(message.match(/HPが(\d+)回復/)?.[1] || 0);
       const effect = message.split("。").filter(Boolean).slice(-2).join(" · ");
-      if (result?.hit === false) showBattleAnnouncement("相手の魔法が外れた", `「${enemyAction.spell.name}」 · 狙いが届かなかった`, "miss");
-      else if (message.includes("クリティカル回復")) showBattleAnnouncement(`相手が回復！ +${heal}`, `「${enemyAction.spell.name}」 · ${effect}`, "heal");
-      else if (message.includes("クリティカル")) showBattleAnnouncement(`敵 CRITICAL! −${result?.damage || 0}`, `「${enemyAction.spell.name}」 · ${effect}`, "critical");
-      else if (result?.damage > 0) showBattleAnnouncement(`敵の攻撃！ −${result.damage}`, `「${enemyAction.spell.name}」 · ${effect}`, "damage");
-      else if (heal > 0) showBattleAnnouncement(`相手が回復！ +${heal}`, `「${enemyAction.spell.name}」 · ${effect}`, "heal");
-      else if (message.includes("力を弱めた")) showBattleAnnouncement("弱体化を受けた！", `「${enemyAction.spell.name}」 · ${effect}`, "damage");
-      else if (message.includes("盾が展開")) showBattleAnnouncement("相手が結界を展開！", `「${enemyAction.spell.name}」 · ${effect}`, "enemy");
-      else if (message.includes("魔力が高まった")) showBattleAnnouncement("相手が魔力を強化！", `「${enemyAction.spell.name}」 · ${effect}`, "enemy");
-      else if (message.includes("使い魔")) showBattleAnnouncement("使い魔を召喚！", `「${enemyAction.spell.name}」 · ${effect}`, "enemy");
-      else showBattleAnnouncement("相手が魔法を発動", `「${enemyAction.spell.name}」 · ${effect}`, "enemy");
+      if (result?.hit === false) showBattleAnnouncement(`${battle.enemy.name}の魔法が外れた`, `${battle.player.name}に届かなかった · 「${enemyAction.spell.name}」`, "miss");
+      else if (message.includes("クリティカル回復")) showBattleAnnouncement(`${battle.enemy.name}が回復！ +${heal}`, `「${enemyAction.spell.name}」 · ${effect}`, "heal");
+      else if (message.includes("クリティカル")) showBattleAnnouncement(`${battle.enemy.name}のCRITICAL! −${result?.damage || 0}`, `${battle.player.name}に命中 · 「${enemyAction.spell.name}」 · ${effect}`, "critical");
+      else if (result?.damage > 0) showBattleAnnouncement(`${battle.enemy.name}の攻撃！ −${result.damage}`, `${battle.player.name}に命中 · 「${enemyAction.spell.name}」 · ${effect}`, "damage");
+      else if (heal > 0) showBattleAnnouncement(`${battle.enemy.name}が回復！ +${heal}`, `「${enemyAction.spell.name}」 · ${effect}`, "heal");
+      else if (message.includes("力を弱めた")) showBattleAnnouncement(`${battle.player.name}が弱体化を受けた！`, `相手の「${enemyAction.spell.name}」 · ${effect}`, "damage");
+      else if (message.includes("盾が展開")) showBattleAnnouncement(`${battle.enemy.name}が結界を展開！`, `「${enemyAction.spell.name}」 · ${effect}`, "enemy");
+      else if (message.includes("魔力が高まった")) showBattleAnnouncement(`${battle.enemy.name}が魔力を強化！`, `「${enemyAction.spell.name}」 · ${effect}`, "enemy");
+      else if (message.includes("使い魔")) showBattleAnnouncement(`${battle.enemy.name}が使い魔を召喚！`, `「${enemyAction.spell.name}」 · ${effect}`, "enemy");
+      else showBattleAnnouncement(`${battle.enemy.name}が魔法を発動！`, `「${enemyAction.spell.name}」 · ${effect}`, "enemy");
       animateSpell(enemyAction.spell, "enemy", { lane: before.playerLane, missed: result?.hit === false });
       if (result?.damage > 0) window.setTimeout(() => revealBattleImpact("player", result.damage), 420);
       else if (playerDelta > 0) window.setTimeout(() => revealBattleImpact("player", playerDelta), 420);
       else if (playerDelta < 0) window.setTimeout(() => revealBattleImpact("player", -playerDelta, true), 420);
       if (message.includes("押し出された") || message.includes("引き寄せられた")) animateMovement("player");
     } else if (enemyAction.type === "move") {
-      showBattleAnnouncement("相手が移動！", `${LANE_NAMES[enemyAction.from]} → ${LANE_NAMES[enemyAction.to]}`, "enemy");
+      showBattleAnnouncement(`${battle.enemy.name}が移動！`, `${LANE_NAMES[enemyAction.from]} → ${LANE_NAMES[enemyAction.to]}`, "enemy");
       animateMovement("enemy");
     } else if (enemyAction.type === "stopped") {
       showBattleAnnouncement("相手は行動できない", enemyAction.message, "miss");
@@ -1097,6 +1125,15 @@ function bindEvents() {
   });
 
   $("#renamePlayerBtn").addEventListener("click", () => openNameDialog("rename"));
+  $("#skinOptions").addEventListener("click", (event) => {
+    const option = event.target.closest("[data-skin-id]");
+    if (!option || !PLAYER_SKINS.some((skin) => skin.id === option.dataset.skinId)) return;
+    player.skinId = option.dataset.skinId;
+    save();
+    renderProfile();
+    renderHome();
+    toast(`${PLAYER_SKINS.find((skin) => skin.id === player.skinId).name}に着替えました。`);
+  });
   $("#nameCancelButton").addEventListener("click", () => $("#nameDialog").close("cancel"));
   $("#renameForm").addEventListener("submit", (event) => {
     event.preventDefault();

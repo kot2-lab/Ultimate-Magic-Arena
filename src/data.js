@@ -1,4 +1,4 @@
-export const VERSION = "1.5.2";
+export const VERSION = "1.5.3";
 export let MAX_SPELLS = 20;
 const DEFAULT_RUNTIME_CONFIG = Object.freeze({ maxSpells: 20, spellCostMultiplier: 1, playerPowerMultiplier: 1, cpuHpMultiplier: 1, cpuPowerMultiplier: 1, expRewardMultiplier: 1 });
 let runtimeConfig = { ...DEFAULT_RUNTIME_CONFIG };
@@ -6,6 +6,12 @@ export const SAVE_KEY = "umaSave";
 export const SETTINGS_KEY = "umaSettings";
 export const LANES = ["left", "center", "right"];
 export const LANE_NAMES = { left: "左翼", center: "中央", right: "右翼" };
+export const PLAYER_SKINS = [
+  { id: "astral", name: "星詠みのローブ", robe: "#514777", cloak: "#292642", trim: "#e5c878", hair: "#342c35", accent: "#8f84bd" },
+  { id: "ember", name: "紅蓮の旅装", robe: "#a34e42", cloak: "#572d37", trim: "#f0bf71", hair: "#402b31", accent: "#dc8056" },
+  { id: "tide", name: "蒼波の外套", robe: "#47788d", cloak: "#253f5e", trim: "#a9dfdc", hair: "#383744", accent: "#69b7c6" },
+  { id: "grove", name: "森守りの衣", robe: "#54805c", cloak: "#2a493b", trim: "#e0d18a", hair: "#594032", accent: "#9cb87a" },
+];
 
 export function applyRuntimeConfig(config) {
   if (!config || typeof config !== "object") return;
@@ -161,7 +167,7 @@ export function defaultSpells() {
 
 export function freshPlayer() {
   return {
-    name: "新人魔法使い", level: 1, exp: 0, rate: 1000,
+    name: "新人魔法使い", skinId: "astral", level: 1, exp: 0, rate: 1000,
     hp: 100, maxHP: 100, mp: 30, maxMP: 70, mpRegen: 5, speed: 100,
     wins: 0, losses: 0, battles: 0, lastBattle: null,
     spells: defaultSpells(), tutorialCompleted: false, battleControlsTutorialCompleted: false,
@@ -184,6 +190,7 @@ export function migratePlayer(saved) {
   };
   const finite = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
   player.level = Math.min(999, Math.max(1, finite(player.level, 1)));
+  player.skinId = PLAYER_SKINS.some((skin) => skin.id === saved.skinId) ? saved.skinId : "astral";
   player.exp = Math.max(0, finite(player.exp, 0));
   player.maxHP = Math.max(100, finite(player.maxHP, 100));
   player.maxMP = Math.max(70, finite(player.maxMP, 70));
