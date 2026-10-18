@@ -1,8 +1,11 @@
-import { PLAYER_SKINS } from "./data.js?v=1.5.3";
+import { PLAYER_SKINS } from "./data.js?v=1.5.4";
 
 export function characterArtwork(skinId = "astral", side = "player") {
   const skin = PLAYER_SKINS.find((item) => item.id === skinId) || PLAYER_SKINS[0];
   const facing = side === "enemy" ? " actor-art-enemy" : "";
+  if (skin.image) {
+    return `<img class="actor-art actor-art-portrait${facing}" src="${skin.image}" alt="" draggable="false" />`;
+  }
   const costumeMark = {
     astral: `<path fill="${skin.trim}" d="m50 78 3 4-3 4-3-4Z"/><circle cx="50" cy="82" r="1.2" fill="#fff4c3"/><path fill="${skin.trim}" d="m30 103 2 3-2 3-2-3Zm40-8 2 3-2 3-2-3Z"/>`,
     ember: `<path fill="${skin.accent}" d="m25 71 8-12 2 14-6 8Zm50 0-8-12-2 14 6 8Z"/><path fill="${skin.trim}" d="M38 105q12 7 24 0l2 7q-14 7-28 0Z"/>`,

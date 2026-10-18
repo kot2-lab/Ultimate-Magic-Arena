@@ -469,3 +469,8 @@ body.reduce-motion .shape-impact,body.reduce-motion .special-impact,body.reduce-
   .skin-options { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .skin-option { min-height:96px; }
 }
+.actor-art-portrait { object-fit:contain; object-position:center; }
+.profile-avatar:has(.actor-art-portrait) { overflow:hidden; border-radius:50%; }
+.profile-avatar .actor-art-portrait,
+.player-chip .player-avatar .actor-art-portrait { object-fit:cover; object-position:50% 0%; }
+.skin-preview .actor-art-portrait { object-fit:cover; object-position:50% 0%; }
