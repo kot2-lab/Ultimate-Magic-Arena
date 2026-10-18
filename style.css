@@ -449,9 +449,9 @@ body.reduce-motion .shape-impact,body.reduce-motion .special-impact,body.reduce-
 .actor-art-enemy { transform:scaleX(-1); }
 .actor-shadow { fill:rgba(0,0,0,.28); }
 .actor-staff-glow { animation:actor-orb-glow 1.8s ease-in-out infinite alternate; }
-.profile-avatar { overflow:visible; }
+.profile-avatar { position:relative; overflow:hidden; }
 .profile-avatar .actor-art { width:100%; height:100%; }
-.player-chip .player-avatar { overflow:hidden; }
+.player-chip .player-avatar { position:relative; overflow:hidden; }
 .player-chip .player-avatar .actor-art { width:145%; height:145%; margin:-22%; }
 .wardrobe-section { margin:12px 0 22px; padding:16px; border:1px solid rgba(202,175,120,.15); background:rgba(25,27,33,.58); }
 .cosmetic-note { color:var(--muted); font-size:10px; }
@@ -459,7 +459,7 @@ body.reduce-motion .shape-impact,body.reduce-motion .special-impact,body.reduce-
 .skin-option { display:flex; min-width:0; min-height:108px; align-items:center; flex-direction:column; justify-content:center; gap:4px; padding:8px 5px; color:var(--cream); border:1px solid rgba(202,175,120,.18); background:rgba(17,19,24,.72); cursor:pointer; }
 .skin-option.selected { border-color:var(--gold-bright); background:rgba(197,166,107,.12); box-shadow:0 0 0 1px rgba(228,202,145,.16),0 0 20px rgba(197,166,107,.08); }
 .skin-option:focus-visible { outline:2px solid var(--gold-bright); outline-offset:2px; }
-.skin-preview { display:block; width:39px; height:52px; }
+.skin-preview { position:relative; display:block; width:39px; height:52px; overflow:hidden; }
 .skin-preview .actor-art { width:100%; height:100%; }
 .skin-option strong { overflow:hidden; max-width:100%; font-size:9px; font-weight:500; text-overflow:ellipsis; white-space:nowrap; }
 @keyframes actor-orb-glow { from { filter:brightness(.85); opacity:.8; } to { filter:brightness(1.55); opacity:1; } }
@@ -470,7 +470,7 @@ body.reduce-motion .shape-impact,body.reduce-motion .special-impact,body.reduce-
   .skin-option { min-height:96px; }
 }
 .actor-art-portrait { object-fit:contain; object-position:center; }
-.profile-avatar:has(.actor-art-portrait) { overflow:hidden; border-radius:50%; }
+.profile-avatar:has(.actor-art-portrait) { border-radius:50%; }
 .profile-avatar .actor-art-portrait,
-.player-chip .player-avatar .actor-art-portrait { object-fit:cover; object-position:50% 0%; }
-.skin-preview .actor-art-portrait { object-fit:cover; object-position:50% 0%; }
+.player-chip .player-avatar .actor-art-portrait,
+.skin-preview .actor-art-portrait { position:absolute; left:-100%; top:-18%; width:300%; height:auto; max-width:none; object-fit:contain; object-position:center; }

@@ -1,4 +1,4 @@
-export const VERSION = "1.5.4";
+export const VERSION = "1.5.5";
 export let MAX_SPELLS = 20;
 const DEFAULT_RUNTIME_CONFIG = Object.freeze({ maxSpells: 20, spellCostMultiplier: 1, playerPowerMultiplier: 1, cpuHpMultiplier: 1, cpuPowerMultiplier: 1, expRewardMultiplier: 1 });
 let runtimeConfig = { ...DEFAULT_RUNTIME_CONFIG };
@@ -8,9 +8,6 @@ export const LANES = ["left", "center", "right"];
 export const LANE_NAMES = { left: "左翼", center: "中央", right: "右翼" };
 export const PLAYER_SKINS = [
   { id: "astral", name: "星紋の魔導士", image: "./assets/characters/astral-wizard.png", robe: "#514777", cloak: "#292642", trim: "#e5c878", hair: "#342c35", accent: "#8f84bd" },
-  { id: "ember", name: "紅蓮の旅装", robe: "#a34e42", cloak: "#572d37", trim: "#f0bf71", hair: "#402b31", accent: "#dc8056" },
-  { id: "tide", name: "蒼波の外套", robe: "#47788d", cloak: "#253f5e", trim: "#a9dfdc", hair: "#383744", accent: "#69b7c6" },
-  { id: "grove", name: "森守りの衣", robe: "#54805c", cloak: "#2a493b", trim: "#e0d18a", hair: "#594032", accent: "#9cb87a" },
 ];
 
 export function applyRuntimeConfig(config) {
