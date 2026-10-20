@@ -1,4 +1,4 @@
-import { PLAYER_SKINS } from "./data.js?v=1.5.5";
+import { PLAYER_SKINS } from "./data.js?v=1.5.6";
 
 export function characterArtwork(skinId = "astral", side = "player") {
   const skin = PLAYER_SKINS.find((item) => item.id === skinId) || PLAYER_SKINS[0];

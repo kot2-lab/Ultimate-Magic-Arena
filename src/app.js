@@ -1,9 +1,9 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, PLAYER_SKINS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, freshSettings, migratePlayer, requiredExp, spellPowerLimit, spellUnlockLevel, synergyFor } from "./data.js?v=1.5.5";
-import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.5.5";
-import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.5.5";
-import { Soundscape } from "./audio.js?v=1.5.5";
-import { loadRuntimeConfig } from "./runtime-config.js?v=1.5.5";
-import { characterArtwork } from "./characters.js?v=1.5.5";
+import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, PLAYER_SKINS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, freshSettings, migratePlayer, requiredExp, spellPowerLimit, spellUnlockLevel, synergyFor } from "./data.js?v=1.5.6";
+import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.5.6";
+import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.5.6";
+import { Soundscape } from "./audio.js?v=1.5.6";
+import { loadRuntimeConfig } from "./runtime-config.js?v=1.5.6";
+import { characterArtwork } from "./characters.js?v=1.5.6";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
