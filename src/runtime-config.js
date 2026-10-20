@@ -1,4 +1,4 @@
-import { applyRuntimeConfig } from "./data.js?v=1.5.6";
+import { applyRuntimeConfig } from "./data.js?v=1.5.7";
 
 const CONFIG_URL = "https://uma-api-staging.r8asknazotoki.workers.dev/api/public/runtime-config";
 

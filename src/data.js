@@ -1,4 +1,4 @@
-export const VERSION = "1.5.6";
+export const VERSION = "1.5.7";
 export let MAX_SPELLS = 20;
 const DEFAULT_RUNTIME_CONFIG = Object.freeze({ maxSpells: 20, spellCostMultiplier: 1, playerPowerMultiplier: 1, cpuHpMultiplier: 1, cpuPowerMultiplier: 1, expRewardMultiplier: 1 });
 let runtimeConfig = { ...DEFAULT_RUNTIME_CONFIG };

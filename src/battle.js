@@ -1,4 +1,4 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_CPU_LEVEL, SHAPES, SPECIALS, STATUS, costForSpell, defaultSpells, getRuntimeConfig, synergyFor } from "./data.js?v=1.5.6";
+import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_CPU_LEVEL, SHAPES, SPECIALS, STATUS, costForSpell, defaultSpells, getRuntimeConfig, synergyFor } from "./data.js?v=1.5.7";
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const roll = (chance, random) => random() < chance;

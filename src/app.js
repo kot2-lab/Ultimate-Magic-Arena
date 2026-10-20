@@ -1,9 +1,9 @@
-import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, PLAYER_SKINS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, freshSettings, migratePlayer, requiredExp, spellPowerLimit, spellUnlockLevel, synergyFor } from "./data.js?v=1.5.6";
-import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.5.6";
-import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.5.6";
-import { Soundscape } from "./audio.js?v=1.5.6";
-import { loadRuntimeConfig } from "./runtime-config.js?v=1.5.6";
-import { characterArtwork } from "./characters.js?v=1.5.6";
+import { ATTRIBUTES, CPU_NAMES, LANES, LANE_NAMES, MAX_SPELLS, PLAYER_SKINS, SHAPES, SPECIALS, STATUS, VERSION, costForSpell, freshPlayer, freshSettings, migratePlayer, requiredExp, spellPowerLimit, spellUnlockLevel, synergyFor } from "./data.js?v=1.5.7";
+import { awardExperience, createBattle, expirePlayerTurn, resolvePlayerAction } from "./battle.js?v=1.5.7";
+import { backupProgress, loadProgress, loadSettings, saveProgress, saveSettings } from "./storage.js?v=1.5.7";
+import { Soundscape } from "./audio.js?v=1.5.7";
+import { loadRuntimeConfig } from "./runtime-config.js?v=1.5.7";
+import { characterArtwork } from "./characters.js?v=1.5.7";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -437,8 +437,7 @@ function renderUnit(side, unit) {
     $("#enemyName").textContent = unit.name;
     $("#enemyLevel").textContent = String(unit.level);
     $("#enemySpeedText").textContent = String(unit.speed);
-    const rivalSkin = PLAYER_SKINS[(battle.difficulty + 1) % PLAYER_SKINS.length].id;
-    renderCharacterAvatar($("#enemyAvatar"), rivalSkin, "enemy");
+    renderCharacterAvatar($("#enemyAvatar"), battle.enemySkinId, "enemy");
   }
   $(`#${prefix}HPText`).textContent = String(unit.hp);
   $(`#${prefix}MaxHPText`).textContent = String(unit.maxHP);
@@ -469,6 +468,7 @@ function startBattle(cpuLevel) {
   sound.unlock();
   sound.effect("select");
   battle = createBattle(player, cpuLevel);
+  battle.enemySkinId = PLAYER_SKINS[Math.floor(Math.random() * PLAYER_SKINS.length)].id;
   selectedTargetLane = battle.enemy.lane;
   showView("battleScreen");
   $("#battleArena").dataset.difficulty = String(cpuLevel);
